@@ -1,11 +1,65 @@
 {
   "version": 1,
   "skills": {
+    "e2e-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/developer-essentials/skills/e2e-testing-patterns/SKILL.md",
+      "computedHash": "6daed3254a84348588532aca327ec82a57cafefd7c97c50e75879788f7c1a18d"
+    },
+    "intlayer-compiler": {
+      "source": "aymericzip/intlayer-skills",
+      "sourceType": "github",
+      "skillPath": "skills/intlayer-compiler/SKILL.md",
+      "computedHash": "ccc296678075c8dc1742a7a11b3726288b41664198d2c26d53f56ef5d5574953"
+    },
+    "intlayer-config": {
+      "source": "aymericzip/intlayer-skills",
+      "sourceType": "github",
+      "skillPath": "skills/intlayer-config/SKILL.md",
+      "computedHash": "4a5d69eb56aa0ea9bead713637c56629ac4581f3a8771de9edd97263152031cb"
+    },
+    "intlayer-content": {
+      "source": "aymericzip/intlayer-skills",
+      "sourceType": "github",
+      "skillPath": "skills/intlayer-content/SKILL.md",
+      "computedHash": "594e6b3bd90dc71508f32538351cf2c58fbaebfa29116814a32c5eb8b26237cb"
+    },
+    "intlayer-next-js": {
+      "source": "aymericzip/intlayer-skills",
+      "sourceType": "github",
+      "skillPath": "skills/intlayer-next-js/SKILL.md",
+      "computedHash": "c574630c55c757e66f7d363a4322c459ad78bcf732af9000849a8c52816518d2"
+    },
+    "intlayer-react": {
+      "source": "aymericzip/intlayer-skills",
+      "sourceType": "github",
+      "skillPath": "skills/intlayer-react/SKILL.md",
+      "computedHash": "cafc995e361e2882b41e86c13860b6fe471344e049634621f12ed7dcbe6c88e8"
+    },
+    "intlayer-usage": {
+      "source": "aymericzip/intlayer-skills",
+      "sourceType": "github",
+      "skillPath": "skills/intlayer-usage/SKILL.md",
+      "computedHash": "5586613e6157944a6f4319064f49481f2ba034e9364f2a497dddd02f350e6a34"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
       "computedHash": "4080ff883b26b670a5a224fb332e89ecc15319535f4d14279947ad7812fec558"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+    },
+    "vitest": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vitest/SKILL.md",
+      "computedHash": "943d436114c677802426741980146c07560bf375297666b03062444f4b98a785"
     }
   }
 }
