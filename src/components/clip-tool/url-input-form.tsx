@@ -57,41 +57,38 @@ export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormPro
               disabled={isBusy}
               aria-invalid={Boolean(errorMessage)}
               aria-describedby={errorMessage ? errorId : undefined}
-              className="h-11 pl-9"
+              className="h-11 pl-9 pr-11"
             />
+            <button
+              type="button"
+              onClick={handlePaste}
+              disabled={isBusy}
+              aria-label="Paste link from clipboard"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+            >
+              <Clipboard className="size-4" aria-hidden="true" />
+            </button>
           </div>
           <Button
-            type="button"
-            variant="outline"
-            onClick={handlePaste}
-            disabled={isBusy}
-            className="h-11 shrink-0"
-            aria-label="Paste link from clipboard"
+            type="submit"
+            disabled={isBusy || !value.trim()}
+            className={cn("h-11 shrink-0 sm:px-6")}
           >
-            <Clipboard data-icon="inline-start" className="size-4" aria-hidden="true" />
-            Paste
+            {isBusy ? (
+              <>
+                <Loader2
+                  data-icon="inline-start"
+                  className="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                Fetching…
+              </>
+            ) : (
+              "Get media"
+            )}
           </Button>
         </div>
       </div>
-
-      <Button
-        type="submit"
-        disabled={isBusy || !value.trim()}
-        className={cn("h-11 w-full sm:w-auto sm:self-start sm:px-6")}
-      >
-        {isBusy ? (
-          <>
-            <Loader2
-              data-icon="inline-start"
-              className="size-4 animate-spin"
-              aria-hidden="true"
-            />
-            Fetching…
-          </>
-        ) : (
-          "Get media"
-        )}
-      </Button>
 
       {errorMessage ? (
         <Alert variant="destructive" id={errorId}>
