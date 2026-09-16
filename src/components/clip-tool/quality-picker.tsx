@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { useIntlayer } from "next-intlayer";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import type { VideoQualityOption } from "@/lib/parse-x-url";
@@ -10,11 +11,12 @@ interface QualityPickerProps {
 }
 
 export function QualityPicker({ qualities, selectedIndex, onChange }: QualityPickerProps) {
+  const content = useIntlayer("quality-picker");
   const legendId = useId();
   return (
     <fieldset className="flex flex-col gap-2">
       <legend id={legendId} className="text-sm font-medium">
-        Video quality
+        {content.legend}
       </legend>
       <RadioGroup
         aria-labelledby={legendId}
@@ -33,7 +35,7 @@ export function QualityPicker({ qualities, selectedIndex, onChange }: QualityPic
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium">{quality.label}</span>
                 <span className="text-xs text-muted-foreground">
-                  ~{quality.approxSizeMb.toFixed(1)} MB
+                  {content.approxSize({ mb: quality.approxSizeMb.toFixed(1) })}
                 </span>
               </span>
               <RadioGroupItem id={itemId} value={String(index)} />

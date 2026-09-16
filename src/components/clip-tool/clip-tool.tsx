@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useIntlayer } from "next-intlayer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClipTool } from "@/hooks/use-clip-tool";
 import { UrlInputForm } from "./url-input-form";
@@ -10,6 +11,7 @@ import { QualityPicker } from "./quality-picker";
 import { ShareActions } from "./share-actions";
 
 export function ClipTool() {
+  const content = useIntlayer("clip-tool");
   const { state, submit, selectQuality } = useClipTool();
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -20,7 +22,8 @@ export function ClipTool() {
   }, [state.status]);
 
   const isBusy = state.status === "validating" || state.status === "loading";
-  const errorMessage = state.status === "error" ? state.message : undefined;
+  const errorMessage =
+    state.status === "error" ? String(content.errors[state.code]) : undefined;
 
   return (
     <Card className="w-full max-w-3xl">
@@ -30,9 +33,9 @@ export function ClipTool() {
         <section aria-live="polite" aria-busy={state.status === "loading"}>
           <span className="sr-only" role="status">
             {state.status === "loading"
-              ? "Loading preview…"
+              ? content.loadingPreview
               : state.status === "loaded"
-                ? "Preview ready"
+                ? content.previewReady
                 : ""}
           </span>
 
@@ -45,7 +48,7 @@ export function ClipTool() {
                 tabIndex={-1}
                 className="text-sm font-medium outline-none"
               >
-                Preview
+                {content.previewHeading}
               </h2>
               <MediaPreview
                 media={state.media}

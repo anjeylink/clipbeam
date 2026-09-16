@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, Loader2, Share2 } from "lucide-react";
+import { useIntlayer } from "next-intlayer";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNativeShare } from "@/hooks/use-native-share";
@@ -13,6 +14,7 @@ interface ShareActionsProps {
 }
 
 export function ShareActions({ media, selectedQualityIndex, blob }: ShareActionsProps) {
+  const content = useIntlayer("share-actions");
   const isVideo = media.kind === "video";
   const activeQuality = isVideo ? media.qualities![selectedQualityIndex] : null;
   const extension = isVideo ? "mp4" : "jpg";
@@ -23,8 +25,8 @@ export function ShareActions({ media, selectedQualityIndex, blob }: ShareActions
     blob,
     filename,
     mimeType,
-    shareTitle: "ClipBeam",
-    shareText: `Media from @${media.authorHandle}'s X post`,
+    shareTitle: String(content.shareTitle),
+    shareText: content.shareText({ handle: media.authorHandle }),
   });
 
   return (
@@ -40,7 +42,7 @@ export function ShareActions({ media, selectedQualityIndex, blob }: ShareActions
             {isReady ? (
               <>
                 <Share2 data-icon="inline-start" className="size-4" aria-hidden="true" />
-                Share
+                {content.share}
               </>
             ) : (
               <>
@@ -49,7 +51,7 @@ export function ShareActions({ media, selectedQualityIndex, blob }: ShareActions
                   className="size-4 animate-spin"
                   aria-hidden="true"
                 />
-                Preparing…
+                {content.preparing}
               </>
             )}
           </Button>
@@ -64,7 +66,7 @@ export function ShareActions({ media, selectedQualityIndex, blob }: ShareActions
           {isReady ? (
             <>
               <Download data-icon="inline-start" className="size-4" aria-hidden="true" />
-              Download
+              {content.download}
             </>
           ) : (
             <>
@@ -73,14 +75,14 @@ export function ShareActions({ media, selectedQualityIndex, blob }: ShareActions
                 className="size-4 animate-spin"
                 aria-hidden="true"
               />
-              Preparing…
+              {content.preparing}
             </>
           )}
         </Button>
       </div>
       {shareError ? (
         <Alert variant="destructive">
-          <AlertDescription>{shareError}</AlertDescription>
+          <AlertDescription>{content.errors[shareError]}</AlertDescription>
         </Alert>
       ) : null}
     </div>

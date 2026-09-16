@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import { parseXUrl, validateXUrl, type ParsedXMedia } from "@/lib/parse-x-url";
+import {
+  parseXUrl,
+  validateXUrl,
+  ParseXUrlError,
+  type ParsedXMedia,
+} from "@/lib/parse-x-url";
 
 type BlobStatus = "loading" | "ready" | "error";
+
+export type ClipToolErrorCode = "invalid-format" | "unsupported-post" | "unknown";
 
 export type ClipToolState =
   | { status: "idle" }
@@ -16,28 +23,25 @@ export type ClipToolState =
       blob: Blob | null;
       blobStatus: BlobStatus;
     }
-  | { status: "error"; url: string; message: string };
+  | { status: "error"; url: string; code: ClipToolErrorCode };
 
 type Action =
   | { type: "SUBMIT"; url: string }
-  | { type: "VALIDATION_FAILED"; url: string; message: string }
+  | { type: "VALIDATION_FAILED"; url: string; code: ClipToolErrorCode }
   | { type: "PARSE_STARTED"; url: string }
   | { type: "PARSE_SUCCEEDED"; media: ParsedXMedia }
-  | { type: "PARSE_FAILED"; url: string; message: string }
+  | { type: "PARSE_FAILED"; url: string; code: ClipToolErrorCode }
   | { type: "SELECT_QUALITY"; index: number }
   | { type: "BLOB_READY"; blob: Blob }
   | { type: "BLOB_FAILED" }
   | { type: "RESET" };
-
-const INVALID_FORMAT_MESSAGE =
-  "That doesn't look like an X (Twitter) post link. Paste a URL like https://x.com/user/status/12345.";
 
 function reducer(state: ClipToolState, action: Action): ClipToolState {
   switch (action.type) {
     case "SUBMIT":
       return { status: "validating", url: action.url };
     case "VALIDATION_FAILED":
-      return { status: "error", url: action.url, message: action.message };
+      return { status: "error", url: action.url, code: action.code };
     case "PARSE_STARTED":
       return { status: "loading", url: action.url };
     case "PARSE_SUCCEEDED":
@@ -49,7 +53,7 @@ function reducer(state: ClipToolState, action: Action): ClipToolState {
         blobStatus: "loading",
       };
     case "PARSE_FAILED":
-      return { status: "error", url: action.url, message: action.message };
+      return { status: "error", url: action.url, code: action.code };
     case "SELECT_QUALITY":
       if (state.status !== "loaded") return state;
       return {
@@ -91,7 +95,7 @@ export function useClipTool() {
       dispatch({
         type: "VALIDATION_FAILED",
         url,
-        message: INVALID_FORMAT_MESSAGE,
+        code: "invalid-format",
       });
       return;
     }
@@ -105,9 +109,9 @@ export function useClipTool() {
       })
       .catch((err: unknown) => {
         if (requestIdRef.current !== requestId) return;
-        const message =
-          err instanceof Error ? err.message : "Something went wrong.";
-        dispatch({ type: "PARSE_FAILED", url, message });
+        const code: ClipToolErrorCode =
+          err instanceof ParseXUrlError ? err.code : "unknown";
+        dispatch({ type: "PARSE_FAILED", url, code });
       });
   }, []);
 

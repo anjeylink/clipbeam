@@ -66,7 +66,7 @@ describe("useNativeShare", () => {
       await result.current.share();
     });
 
-    expect(result.current.shareError).toMatch(/interrupted/i);
+    expect(result.current.shareError).toBe("interrupted");
   });
 
   it("isReady reflects whether a blob has been provided", () => {

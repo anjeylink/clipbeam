@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+export type ShareErrorCode = "interrupted";
+
 interface UseNativeShareOptions {
   blob: Blob | null;
   filename: string;
@@ -17,7 +19,7 @@ interface UseNativeShareResult {
   isReady: boolean;
   share: () => Promise<void>;
   download: () => void;
-  shareError: string | null;
+  shareError: ShareErrorCode | null;
 }
 
 /**
@@ -33,7 +35,7 @@ export function useNativeShare({
   shareText,
 }: UseNativeShareOptions): UseNativeShareResult {
   const [canShareFiles, setCanShareFiles] = useState(false);
-  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<ShareErrorCode | null>(null);
 
   useEffect(() => {
     let next = false;
@@ -59,7 +61,7 @@ export function useNativeShare({
       await navigator.share({ files: [file], title: shareTitle, text: shareText });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setShareError("Sharing was interrupted. Try again, or download instead.");
+      setShareError("interrupted");
     }
   }, [blob, filename, mimeType, shareTitle, shareText]);
 

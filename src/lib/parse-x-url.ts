@@ -37,6 +37,18 @@ export function validateXUrl(url: string): XUrlValidation {
   return { valid: true, handle: match[3], statusId: match[4] };
 }
 
+export type ParseXUrlErrorCode = "unsupported-post";
+
+export class ParseXUrlError extends Error {
+  readonly code: ParseXUrlErrorCode;
+
+  constructor(code: ParseXUrlErrorCode) {
+    super(code);
+    this.name = "ParseXUrlError";
+    this.code = code;
+  }
+}
+
 const MOCK_NETWORK_DELAY_MIN_MS = 900;
 const MOCK_NETWORK_DELAY_MAX_MS = 1400;
 
@@ -61,9 +73,7 @@ export async function parseXUrl(url: string): Promise<ParsedXMedia> {
   await mockDelay();
 
   if (handle?.toLowerCase().includes("error")) {
-    throw new Error(
-      "Couldn't read that post. It may be private, deleted, or unsupported.",
-    );
+    throw new ParseXUrlError("unsupported-post");
   }
 
   // Snowflake ids can exceed Number.MAX_SAFE_INTEGER, so branch on the last

@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { Clipboard, Link as LinkIcon, Loader2 } from "lucide-react";
+import { useIntlayer } from "next-intlayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ interface UrlInputFormProps {
 }
 
 export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormProps) {
+  const content = useIntlayer("url-input-form");
   const [value, setValue] = useState("");
   const inputId = useId();
   const errorId = useId();
@@ -37,7 +39,7 @@ export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormPro
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={inputId}>X (Twitter) post link</Label>
+        <Label htmlFor={inputId}>{content.label}</Label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
             <LinkIcon
@@ -63,7 +65,7 @@ export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormPro
               type="button"
               onClick={handlePaste}
               disabled={isBusy}
-              aria-label="Paste link from clipboard"
+              aria-label={String(content.pasteAriaLabel)}
               className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
             >
               <Clipboard className="size-4" aria-hidden="true" />
@@ -81,10 +83,10 @@ export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormPro
                   className="size-4 animate-spin"
                   aria-hidden="true"
                 />
-                Fetching…
+                {content.fetching}
               </>
             ) : (
-              "Get media"
+              content.getMedia
             )}
           </Button>
         </div>

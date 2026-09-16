@@ -19,6 +19,9 @@
 /.next/
 /out/
 
+# Intlayer
+.intlayer
+
 # production
 /build
 

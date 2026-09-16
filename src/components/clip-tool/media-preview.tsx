@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { ImageIcon, PlayCircle } from "lucide-react";
+import { useIntlayer } from "next-intlayer";
 import type { ParsedXMedia } from "@/lib/parse-x-url";
 
 interface MediaPreviewProps {
@@ -8,6 +9,7 @@ interface MediaPreviewProps {
 }
 
 export function MediaPreview({ media, selectedQualityIndex }: MediaPreviewProps) {
+  const content = useIntlayer("media-preview");
   const isVideo = media.kind === "video";
   const activeQuality = isVideo ? media.qualities![selectedQualityIndex] : null;
 
@@ -27,7 +29,7 @@ export function MediaPreview({ media, selectedQualityIndex }: MediaPreviewProps)
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={media.imageUrl}
-            alt={`Media from @${media.authorHandle}'s post`}
+            alt={content.altText({ handle: media.authorHandle })}
             className="aspect-video w-full object-contain"
           />
         )}
@@ -40,7 +42,7 @@ export function MediaPreview({ media, selectedQualityIndex }: MediaPreviewProps)
           ) : (
             <ImageIcon data-icon="inline-start" className="size-3" aria-hidden="true" />
           )}
-          {isVideo ? "Video" : "Image"}
+          {isVideo ? content.video : content.image}
         </Badge>
       </div>
     </div>
