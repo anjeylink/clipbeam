@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useId, type FormEvent } from "react";
 import { Clipboard, Link as LinkIcon, Loader2 } from "lucide-react";
 import { useIntlayer } from "next-intlayer";
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 interface UrlInputFormProps {
+  value: string;
+  onValueChange: (value: string) => void;
   onSubmit: (url: string) => void;
   isBusy: boolean;
   errorMessage?: string;
 }
 
-export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormProps) {
+export function UrlInputForm({
+  value,
+  onValueChange,
+  onSubmit,
+  isBusy,
+  errorMessage,
+}: UrlInputFormProps) {
   const content = useIntlayer("url-input-form");
-  const [value, setValue] = useState("");
   const inputId = useId();
   const errorId = useId();
 
@@ -30,7 +37,7 @@ export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormPro
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text) setValue(text);
+      if (text) onValueChange(text);
     } catch {
       // Clipboard access denied or unsupported — user can paste manually.
     }
@@ -55,7 +62,7 @@ export function UrlInputForm({ onSubmit, isBusy, errorMessage }: UrlInputFormPro
               spellCheck={false}
               placeholder="https://x.com/username/status/1234567890"
               value={value}
-              onChange={(event) => setValue(event.target.value)}
+              onChange={(event) => onValueChange(event.target.value)}
               disabled={isBusy}
               aria-invalid={Boolean(errorMessage)}
               aria-describedby={errorMessage ? errorId : undefined}
