@@ -15,6 +15,14 @@ const shareActionsContent = {
       en: "Download",
       uk: "Завантажити",
     }),
+    retry: t({
+      en: "Retry",
+      uk: "Повторити",
+    }),
+    prepareFailed: t({
+      en: "Couldn't prepare the file. Check your connection and try again.",
+      uk: "Не вдалося підготувати файл. Перевірте з'єднання і спробуйте ще раз.",
+    }),
     shareTitle: t({
       en: "ClipBeam",
       uk: "ClipBeam",

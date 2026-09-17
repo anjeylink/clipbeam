@@ -69,6 +69,20 @@ describe("useNativeShare", () => {
     expect(result.current.shareError).toBe("interrupted");
   });
 
+  it("reports canShareFiles based on filename/mimeType alone, before the blob resolves", async () => {
+    vi.stubGlobal("navigator", {
+      share: vi.fn().mockResolvedValue(undefined),
+      canShare: vi.fn().mockReturnValue(true),
+    });
+
+    const { result } = renderHook(() =>
+      useNativeShare({ blob: null, filename: "a.jpg", mimeType: "image/jpeg" }),
+    );
+
+    await waitFor(() => expect(result.current.canShareFiles).toBe(true));
+    expect(result.current.isReady).toBe(false);
+  });
+
   it("isReady reflects whether a blob has been provided", () => {
     vi.stubGlobal("navigator", {});
     const { result, rerender } = renderHook(

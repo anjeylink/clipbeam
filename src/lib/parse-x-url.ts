@@ -1,43 +1,65 @@
-export type MediaKind = "image" | "video";
+import type { MediaKind, VideoQualityOption, ParsedXMedia } from "@/lib/x-media-types";
 
-export interface VideoQualityOption {
-  label: string;
-  width: number;
-  height: number;
-  url: string;
-  approxSizeMb: number;
-}
+export type { MediaKind, VideoQualityOption, ParsedXMedia };
 
-export interface ParsedXMedia {
-  postUrl: string;
-  authorHandle: string;
-  kind: MediaKind;
-  posterUrl: string;
-  imageUrl?: string;
-  qualities?: VideoQualityOption[];
-}
+// Matches x.com/twitter.com/mobile.twitter.com status links. Scheme is
+// optional (people paste bare "x.com/..."), the legacy plural "statuses"
+// segment is accepted alongside "status", and there's no trailing anchor so
+// query strings, fragments, and /photo/1 or /video/1 suffixes are tolerated.
+const DIRECT_STATUS_URL_PATTERN =
+  /^(?:https?:\/\/)?(?:www\.|mobile\.)?(?:twitter\.com|x\.com)\/([\w]{1,15})\/status(?:es)?\/(\d+)/i;
 
-const X_STATUS_URL_PATTERN =
-  /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/([\w]{1,15})\/status\/(\d+)/i;
+// Matches the handle-less "/i/status/..." and "/i/web/status/..." forms.
+const HANDLE_LESS_STATUS_URL_PATTERN =
+  /^(?:https?:\/\/)?(?:www\.|mobile\.)?(?:twitter\.com|x\.com)\/i\/(?:web\/)?status\/(\d+)/i;
+
+// t.co short links can't be resolved to a status id without following a
+// server-side redirect, so this only confirms the shape is plausible.
+const SHORT_LINK_URL_PATTERN = /^(?:https?:\/\/)?t\.co\/[\w]+/i;
+
+export type XUrlFormat = "direct" | "short-link" | "invalid";
 
 export interface XUrlValidation {
   valid: boolean;
+  format: XUrlFormat;
   handle?: string;
   statusId?: string;
 }
 
 /**
- * Format-only validation. Deliberately does not know about "mock failure"
- * content (see parseXUrl) so this stays a faithful stand-in for validating
- * against a real API later.
+ * Format-only validation, isomorphic (safe on client and server). Does not
+ * confirm the post exists or has media — that requires the /api/resolve
+ * round trip in parseXUrl. Also used server-side, re-run against the
+ * post-redirect URL once a short link has been resolved.
  */
 export function validateXUrl(url: string): XUrlValidation {
-  const match = url.trim().match(X_STATUS_URL_PATTERN);
-  if (!match) return { valid: false };
-  return { valid: true, handle: match[3], statusId: match[4] };
+  const trimmed = url.trim();
+
+  const directMatch = trimmed.match(DIRECT_STATUS_URL_PATTERN);
+  if (directMatch) {
+    return { valid: true, format: "direct", handle: directMatch[1], statusId: directMatch[2] };
+  }
+
+  const handleLessMatch = trimmed.match(HANDLE_LESS_STATUS_URL_PATTERN);
+  if (handleLessMatch) {
+    return { valid: true, format: "direct", statusId: handleLessMatch[1] };
+  }
+
+  if (SHORT_LINK_URL_PATTERN.test(trimmed)) {
+    return { valid: true, format: "short-link" };
+  }
+
+  return { valid: false, format: "invalid" };
 }
 
-export type ParseXUrlErrorCode = "unsupported-post";
+export type ParseXUrlErrorCode =
+  | "invalid-format"
+  | "not-found"
+  | "unsupported-post"
+  | "no-media"
+  | "multi-media-unsupported"
+  | "rate-limited"
+  | "unknown";
 
 export class ParseXUrlError extends Error {
   readonly code: ParseXUrlErrorCode;
@@ -49,76 +71,39 @@ export class ParseXUrlError extends Error {
   }
 }
 
-const MOCK_NETWORK_DELAY_MIN_MS = 900;
-const MOCK_NETWORK_DELAY_MAX_MS = 1400;
-
-function mockDelay(): Promise<void> {
-  const ms =
-    MOCK_NETWORK_DELAY_MIN_MS +
-    Math.random() * (MOCK_NETWORK_DELAY_MAX_MS - MOCK_NETWORK_DELAY_MIN_MS);
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function isParseXUrlErrorCode(value: unknown): value is ParseXUrlErrorCode {
+  return (
+    typeof value === "string" &&
+    [
+      "invalid-format",
+      "not-found",
+      "unsupported-post",
+      "no-media",
+      "multi-media-unsupported",
+      "rate-limited",
+      "unknown",
+    ].includes(value)
+  );
 }
 
 /**
- * Stands in for a real fetch/parse call to an X post. Assumes the URL has
- * already passed validateXUrl — this is the single seam to replace with a
- * real Server Action/API route later.
- *
- * Mock behavior: rejects if the handle contains "error" (used to exercise
- * the inline error state); otherwise branches on whether the trailing
- * status id is even (video) or odd (image).
+ * Resolves a pasted X/Twitter post URL to its media via the /api/resolve
+ * Route Handler, which does the actual (server-side, since the syndication
+ * endpoint's CORS policy blocks browser calls) extraction. Assumes the URL
+ * has already passed validateXUrl.
  */
 export async function parseXUrl(url: string): Promise<ParsedXMedia> {
-  const { handle, statusId } = validateXUrl(url);
-  await mockDelay();
+  const res = await fetch(`/api/resolve?url=${encodeURIComponent(url)}`);
 
-  if (handle?.toLowerCase().includes("error")) {
-    throw new ParseXUrlError("unsupported-post");
+  if (!res.ok) {
+    let code: unknown;
+    try {
+      code = (await res.json())?.code;
+    } catch {
+      // ignore: non-JSON error body falls through to the "unknown" default
+    }
+    throw new ParseXUrlError(isParseXUrlErrorCode(code) ? code : "unknown");
   }
 
-  // Snowflake ids can exceed Number.MAX_SAFE_INTEGER, so branch on the last
-  // digit's parity rather than parsing the whole id as a number.
-  const lastDigit = Number((statusId ?? "0").slice(-1));
-  const isVideo = lastDigit % 2 === 0;
-
-  if (isVideo) {
-    const qualities: VideoQualityOption[] = [
-      {
-        label: "1080p",
-        width: 1920,
-        height: 1080,
-        url: "/mock/sample-video-1080p.mp4",
-        approxSizeMb: 4.8,
-      },
-      {
-        label: "720p",
-        width: 1280,
-        height: 720,
-        url: "/mock/sample-video-720p.mp4",
-        approxSizeMb: 2.6,
-      },
-      {
-        label: "480p",
-        width: 854,
-        height: 480,
-        url: "/mock/sample-video-480p.mp4",
-        approxSizeMb: 1.3,
-      },
-    ];
-    return {
-      postUrl: url,
-      authorHandle: handle ?? "unknown",
-      kind: "video",
-      posterUrl: "/mock/sample-video-poster.jpg",
-      qualities,
-    };
-  }
-
-  return {
-    postUrl: url,
-    authorHandle: handle ?? "unknown",
-    kind: "image",
-    posterUrl: "/mock/sample-image.jpg",
-    imageUrl: "/mock/sample-image.jpg",
-  };
+  return (await res.json()) as ParsedXMedia;
 }

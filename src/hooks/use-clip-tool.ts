@@ -6,11 +6,12 @@ import {
   validateXUrl,
   ParseXUrlError,
   type ParsedXMedia,
+  type ParseXUrlErrorCode,
 } from "@/lib/parse-x-url";
 
-type BlobStatus = "loading" | "ready" | "error";
+export type BlobStatus = "loading" | "ready" | "error";
 
-export type ClipToolErrorCode = "invalid-format" | "unsupported-post" | "unknown";
+export type ClipToolErrorCode = ParseXUrlErrorCode;
 
 export type ClipToolState =
   | { status: "idle" }
@@ -34,7 +35,27 @@ type Action =
   | { type: "SELECT_QUALITY"; index: number }
   | { type: "BLOB_READY"; blob: Blob }
   | { type: "BLOB_FAILED" }
+  | { type: "RETRY_BLOB" }
   | { type: "RESET" };
+
+// Auto-prefetch (see the effect below) downloads the default-selected
+// quality immediately on paste, before the user has chosen anything — real
+// posts can offer variants well over 50MB (unlike the old mock's ~5MB cap),
+// so defaulting to the highest available quality would silently burn a lot
+// of a mobile user's data before they've touched the page. Default instead
+// to the highest quality at or under 720p (by short edge, so portrait video
+// isn't penalized), falling back to the smallest available if every variant
+// exceeds that.
+const DEFAULT_QUALITY_MAX_SHORT_EDGE = 720;
+
+function defaultQualityIndex(media: ParsedXMedia): number {
+  const qualities = media.qualities;
+  if (media.kind !== "video" || !qualities || qualities.length === 0) return 0;
+  const index = qualities.findIndex(
+    (q) => Math.min(q.width, q.height) <= DEFAULT_QUALITY_MAX_SHORT_EDGE,
+  );
+  return index === -1 ? qualities.length - 1 : index;
+}
 
 function reducer(state: ClipToolState, action: Action): ClipToolState {
   switch (action.type) {
@@ -48,7 +69,7 @@ function reducer(state: ClipToolState, action: Action): ClipToolState {
       return {
         status: "loaded",
         media: action.media,
-        selectedQualityIndex: 0,
+        selectedQualityIndex: defaultQualityIndex(action.media),
         blob: null,
         blobStatus: "loading",
       };
@@ -68,6 +89,9 @@ function reducer(state: ClipToolState, action: Action): ClipToolState {
     case "BLOB_FAILED":
       if (state.status !== "loaded") return state;
       return { ...state, blob: null, blobStatus: "error" };
+    case "RETRY_BLOB":
+      if (state.status !== "loaded") return state;
+      return { ...state, blob: null, blobStatus: "loading" };
     case "RESET":
       return { status: "idle" };
     default:
@@ -121,6 +145,8 @@ export function useClipTool() {
 
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
+  const retryBlob = useCallback(() => dispatch({ type: "RETRY_BLOB" }), []);
+
   const blobFetchKey =
     state.status === "loaded"
       ? `${state.selectedQualityIndex}:${state.blobStatus}`
@@ -155,5 +181,5 @@ export function useClipTool() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blobFetchKey]);
 
-  return { state, submit, selectQuality, reset };
+  return { state, submit, selectQuality, retryBlob, reset };
 }

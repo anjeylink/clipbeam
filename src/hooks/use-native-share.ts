@@ -39,19 +39,23 @@ export function useNativeShare({
 
   useEffect(() => {
     let next = false;
-    if (typeof navigator !== "undefined" && "share" in navigator && blob) {
-      const file = new File([blob], filename, { type: mimeType });
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      // Probe with a zero-byte stand-in file so this doesn't wait on the
+      // real blob resolving — canShare cares about filename/mimeType
+      // support, not file content, so the Share button can be present from
+      // first paint instead of popping in once the media download finishes.
+      const probeFile = new File([], filename, { type: mimeType });
       next =
         "canShare" in navigator &&
         typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [file] });
+        navigator.canShare({ files: [probeFile] });
     }
     // Feature detection must run post-mount (not during render) so the
     // server-rendered markup (no `navigator`) matches the client's first
     // paint before hydration adjusts it.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCanShareFiles(next);
-  }, [blob, filename, mimeType]);
+  }, [filename, mimeType]);
 
   const share = useCallback(async () => {
     if (!blob) return;
