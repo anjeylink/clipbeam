@@ -156,26 +156,38 @@ export function useClipTool() {
     if (state.status !== "loaded" || state.blobStatus !== "loading") return;
 
     const media = state.media;
-    const sourceUrl =
+    const rawUrl =
       media.kind === "image"
         ? media.imageUrl!
         : media.qualities![state.selectedQualityIndex].url;
+    // Routed through our own /api/download rather than fetched directly:
+    // video.twimg.com 403s browser-originated cross-origin requests (likely
+    // anti-hotlink filtering on Origin/Referer), unlike pbs.twimg.com. The
+    // proxy sidesteps that for both media kinds uniformly.
+    const sourceUrl = `/api/download?url=${encodeURIComponent(rawUrl)}`;
 
-    let cancelled = false;
-    fetch(sourceUrl)
+    // An AbortController (not just an ignore-the-result flag) matters here:
+    // React Strict Mode double-invokes this effect on mount in dev, and
+    // without actually cancelling the first fetch, both requests hit the
+    // network for the same URL — the second then sits behind the first in
+    // Chrome's request de-duplication and can appear to hang indefinitely
+    // for a large file (e.g. the default-selected quality on initial paste).
+    const controller = new AbortController();
+    fetch(sourceUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch media");
         return res.blob();
       })
       .then((blob) => {
-        if (!cancelled) dispatch({ type: "BLOB_READY", blob });
+        dispatch({ type: "BLOB_READY", blob });
       })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: "BLOB_FAILED" });
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        dispatch({ type: "BLOB_FAILED" });
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
     // blobFetchKey mirrors the (selectedQualityIndex, blobStatus) pair that should retrigger this fetch
     // eslint-disable-next-line react-hooks/exhaustive-deps
