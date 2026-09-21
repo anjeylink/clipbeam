@@ -63,7 +63,7 @@ export function ShareActions({
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         {canShareFiles ? (
-          <Button type="button" onClick={share} disabled={disabled} className="h-11 flex-1">
+          <Button type="button" onClick={share} disabled={disabled} className="h-12 flex-1 px-4">
             {isLoading ? (
               <>
                 <Loader2
@@ -86,7 +86,7 @@ export function ShareActions({
           variant={canShareFiles ? "outline" : "default"}
           onClick={download}
           disabled={disabled}
-          className="h-11 flex-1"
+          className="h-12 flex-1 px-4"
         >
           {isLoading ? (
             <>
