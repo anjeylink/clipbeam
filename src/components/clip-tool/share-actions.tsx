@@ -1,31 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
 import { Download, Loader2, RefreshCw, Share2 } from "lucide-react";
 import { useIntlayer } from "next-intlayer";
-import { Button } from "@/components/ui/button";
+import { cn } from "cn";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNativeShare } from "@/hooks/use-native-share";
 import type { ParsedXMedia } from "@/lib/parse-x-url";
 import type { BlobStatus } from "@/hooks/use-clip-tool";
+import { mediaSourceUrl } from "@/lib/clip-tool-store";
+import { mediaProxyUrl } from "@/lib/media-proxy-url";
+import { extensionFromMimeType } from "@/lib/media-filename";
 
 interface ShareActionsProps {
   media: ParsedXMedia;
   selectedQualityIndex: number;
   blob: Blob | null;
   blobStatus: BlobStatus;
+  onEnsureBlob: () => void;
   onRetryBlob: () => void;
-}
-
-const FALLBACK_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
-  "video/mp4": "mp4",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-
-function extensionFromMimeType(mimeType: string): string {
-  return FALLBACK_EXTENSION_BY_MIME_TYPE[mimeType] ?? mimeType.split("/")[1] ?? "bin";
 }
 
 export function ShareActions({
@@ -33,6 +27,7 @@ export function ShareActions({
   selectedQualityIndex,
   blob,
   blobStatus,
+  onEnsureBlob,
   onRetryBlob,
 }: ShareActionsProps) {
   const content = useIntlayer("share-actions");
@@ -45,9 +40,14 @@ export function ShareActions({
   const guessedMimeType = isVideo ? "video/mp4" : "image/jpeg";
   const mimeType = blob?.type || guessedMimeType;
   const extension = extensionFromMimeType(mimeType);
-  const filename = `clipbeam-${media.authorHandle}-${activeQuality?.label ?? "image"}.${extension}`;
+  const filenameBase = `clipbeam-${media.authorHandle}-${activeQuality?.label ?? "image"}`;
+  const filename = `${filenameBase}.${extension}`;
+  // Download streams straight from our proxy as an attachment, so it starts
+  // instantly and never waits on (or holds in memory) the blob below, which
+  // only exists to feed Share.
+  const downloadHref = mediaProxyUrl(mediaSourceUrl(media, selectedQualityIndex), filenameBase);
 
-  const { canShareFiles, share, download, shareError } = useNativeShare({
+  const { canShareFiles, share, shareError } = useNativeShare({
     blob,
     filename,
     mimeType,
@@ -55,16 +55,26 @@ export function ShareActions({
     shareText: content.shareText({ handle: media.authorHandle }),
   });
 
-  const isLoading = blobStatus === "loading";
-  const isError = blobStatus === "error";
-  const disabled = isLoading || isError;
+  // Only browsers that can share files need the blob, so only they pay for
+  // the prefetch — on desktop it would be a large download nobody asked for.
+  useEffect(() => {
+    if (canShareFiles) onEnsureBlob();
+  }, [canShareFiles, blobStatus, selectedQualityIndex, media, onEnsureBlob]);
+
+  const isPreparing = blobStatus === "idle" || blobStatus === "loading";
+  const isError = canShareFiles && blobStatus === "error";
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         {canShareFiles ? (
-          <Button type="button" onClick={share} disabled={disabled} className="h-12 flex-1 px-4">
-            {isLoading ? (
+          <Button
+            type="button"
+            onClick={share}
+            disabled={isPreparing || isError}
+            className="h-12 flex-1 px-4"
+          >
+            {isPreparing ? (
               <>
                 <Loader2
                   data-icon="inline-start"
@@ -81,29 +91,21 @@ export function ShareActions({
             )}
           </Button>
         ) : null}
-        <Button
-          type="button"
-          variant={canShareFiles ? "outline" : "default"}
-          onClick={download}
-          disabled={disabled}
-          className="h-12 flex-1 px-4"
-        >
-          {isLoading ? (
-            <>
-              <Loader2
-                data-icon="inline-start"
-                className="size-4 animate-spin"
-                aria-hidden="true"
-              />
-              {content.preparing}
-            </>
-          ) : (
-            <>
-              <Download data-icon="inline-start" className="size-4" aria-hidden="true" />
-              {content.download}
-            </>
+        {/* No `download` attribute: it would force-save a proxy error's JSON
+            body as a "video" file. The server's Content-Disposition names the
+            file on success; an error instead opens in the throwaway tab. */}
+        <a
+          href={downloadHref}
+          target="_blank"
+          rel="noopener"
+          className={cn(
+            buttonVariants({ variant: canShareFiles ? "outline" : "default" }),
+            "h-12 flex-1 px-4",
           )}
-        </Button>
+        >
+          <Download data-icon="inline-start" className="size-4" aria-hidden="true" />
+          {content.download}
+        </a>
       </div>
       {isError ? (
         <Alert variant="destructive">

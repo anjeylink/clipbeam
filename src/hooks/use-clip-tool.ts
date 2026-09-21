@@ -27,6 +27,7 @@ export function useClipTool() {
     setUrl: clipToolStore.setUrl,
     submit: clipToolStore.submit,
     selectQuality: clipToolStore.selectQuality,
+    ensureBlob: clipToolStore.ensureBlob,
     retryBlob: clipToolStore.retryBlob,
     reset: clipToolStore.reset,
   };

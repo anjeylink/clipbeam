@@ -1,3 +1,4 @@
+import { mediaProxyUrl } from "@/lib/media-proxy-url";
 import {
   parseXUrl,
   validateXUrl,
@@ -6,7 +7,10 @@ import {
   type ParseXUrlErrorCode,
 } from "@/lib/parse-x-url";
 
-export type BlobStatus = "loading" | "ready" | "error";
+// "idle" = not requested yet: the blob only exists to feed the Web Share API
+// (which needs a File in hand), so it's fetched lazily via ensureBlob() rather
+// than for every loaded post. Plain downloads stream via /api/download instead.
+export type BlobStatus = "idle" | "loading" | "ready" | "error";
 
 export type ClipToolErrorCode = ParseXUrlErrorCode;
 
@@ -24,14 +28,13 @@ export type ClipToolState =
     }
   | { status: "error"; url: string; code: ClipToolErrorCode };
 
-// Auto-prefetch (see fetchBlob below) downloads the default-selected
-// quality immediately on paste, before the user has chosen anything — real
-// posts can offer variants well over 50MB (unlike the old mock's ~5MB cap),
-// so defaulting to the highest available quality would silently burn a lot
-// of a mobile user's data before they've touched the page. Default instead
-// to the highest quality at or under 720p (by short edge, so portrait video
-// isn't penalized), falling back to the smallest available if every variant
-// exceeds that.
+// Share-capable browsers prefetch the default-selected quality's blob (see
+// ensureBlob below) before the user has chosen anything — real posts can
+// offer variants well over 50MB, so defaulting to the highest available
+// quality would silently burn a lot of a mobile user's data before they've
+// touched the page. Default instead to the highest quality at or under 720p
+// (by short edge, so portrait video isn't penalized), falling back to the
+// smallest available if every variant exceeds that.
 const DEFAULT_QUALITY_MAX_SHORT_EDGE = 720;
 
 function defaultQualityIndex(media: ParsedXMedia): number {
@@ -43,7 +46,8 @@ function defaultQualityIndex(media: ParsedXMedia): number {
   return index === -1 ? qualities.length - 1 : index;
 }
 
-function blobCacheKey(media: ParsedXMedia, qualityIndex: number): string {
+/** The upstream CDN URL for the media (or the selected video quality). */
+export function mediaSourceUrl(media: ParsedXMedia, qualityIndex: number): string {
   return media.kind === "image" ? media.imageUrl! : media.qualities![qualityIndex].url;
 }
 
@@ -131,15 +135,16 @@ class ClipToolStore {
       .then((media) => {
         if (this.submitRequestId !== requestId) return;
         this.blobCache.clear();
+        this.blobAbortController?.abort();
+        this.blobRequestId++;
         this.setState({
           status: "loaded",
           url,
           media,
           selectedQualityIndex: defaultQualityIndex(media),
           blob: null,
-          blobStatus: "loading",
+          blobStatus: "idle",
         });
-        this.fetchBlob();
       })
       .catch((err: unknown) => {
         if (this.submitRequestId !== requestId) return;
@@ -152,14 +157,26 @@ class ClipToolStore {
   selectQuality = (index: number) => {
     if (this.state.status !== "loaded" || this.state.selectedQualityIndex === index) return;
 
-    const cached = this.blobCache.get(blobCacheKey(this.state.media, index));
+    // Drop any in-flight fetch for the previous quality; ensureBlob() starts
+    // the new one if the Share flow wants it.
+    this.blobAbortController?.abort();
+    this.blobRequestId++;
+    const cached = this.blobCache.get(mediaSourceUrl(this.state.media, index));
     this.setState({
       ...this.state,
       selectedQualityIndex: index,
       blob: cached ?? null,
-      blobStatus: cached ? "ready" : "loading",
+      blobStatus: cached ? "ready" : "idle",
     });
-    if (!cached) this.fetchBlob();
+  };
+
+  // Idempotent: starts the blob download only if it hasn't been requested for
+  // the current selection. Called by the Share UI once it knows the browser
+  // can actually share files.
+  ensureBlob = () => {
+    if (this.state.status !== "loaded" || this.state.blobStatus !== "idle") return;
+    this.setState({ ...this.state, blobStatus: "loading" });
+    this.fetchBlob();
   };
 
   retryBlob = () => {
@@ -171,6 +188,7 @@ class ClipToolStore {
   reset = () => {
     this.blobCache.clear();
     this.blobAbortController?.abort();
+    this.blobRequestId++;
     syncUrlQueryParam("");
     this.setState(IDLE_STATE);
   };
@@ -184,14 +202,12 @@ class ClipToolStore {
 
     const { media, selectedQualityIndex } = this.state;
     const requestId = ++this.blobRequestId;
-    const cacheKey = blobCacheKey(media, selectedQualityIndex);
-    const rawUrl =
-      media.kind === "image" ? media.imageUrl! : media.qualities![selectedQualityIndex].url;
+    const rawUrl = mediaSourceUrl(media, selectedQualityIndex);
     // Routed through our own /api/download rather than fetched directly:
     // video.twimg.com 403s browser-originated cross-origin requests (likely
     // anti-hotlink filtering on Origin/Referer), unlike pbs.twimg.com. The
     // proxy sidesteps that for both media kinds uniformly.
-    const sourceUrl = `/api/download?url=${encodeURIComponent(rawUrl)}`;
+    const sourceUrl = mediaProxyUrl(rawUrl);
 
     fetch(sourceUrl, { signal: controller.signal })
       .then((res) => {
@@ -200,7 +216,7 @@ class ClipToolStore {
       })
       .then((blob) => {
         if (this.blobRequestId !== requestId || this.state.status !== "loaded") return;
-        this.blobCache.set(cacheKey, blob);
+        this.blobCache.set(rawUrl, blob);
         this.setState({ ...this.state, blob, blobStatus: "ready" });
       })
       .catch((err: unknown) => {

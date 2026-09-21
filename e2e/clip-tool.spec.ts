@@ -30,12 +30,19 @@ const VIDEO_FIXTURE = {
   ],
 };
 
-test("pastes a video link, previews it, and downloads the selected quality", async ({
+test("pastes a video link, previews it, and links Download to the selected quality", async ({
   page,
 }) => {
   await page.route("**/api/resolve*", (route) =>
     route.fulfill({ json: VIDEO_FIXTURE }),
   );
+  // Record any /api/download traffic: nothing should hit the proxy until the
+  // user actually clicks Download (this browser has no Web Share file support,
+  // so there's no reason to prefetch the file into memory).
+  const downloadRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/download")) downloadRequests.push(request.url());
+  });
 
   await page.goto("/");
 
@@ -52,12 +59,59 @@ test("pastes a video link, previews it, and downloads the selected quality", asy
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("radio", { name: /480p/i })).toBeChecked();
 
-  const downloadButton = page.getByRole("button", { name: /^download$/i });
-  await expect(downloadButton).toBeEnabled({ timeout: 5000 });
-  const downloadPromise = page.waitForEvent("download");
-  await downloadButton.click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/clipbeam-.*\.mp4/);
+  // Download is a plain link to the streaming proxy: available immediately
+  // (no "Preparing…" wait), pointing at the selected quality. The attachment
+  // header itself is covered by the /api/download route tests.
+  const downloadLink = page.getByRole("link", { name: /^download$/i });
+  await expect(downloadLink).toBeVisible();
+  const href = await downloadLink.getAttribute("href");
+  const linked = new URL(href!, page.url());
+  expect(linked.pathname).toBe("/api/download");
+  expect(linked.searchParams.get("url")).toBe("/mock/sample-video-480p.mp4");
+  expect(linked.searchParams.get("filename")).toBe("clipbeam-someone-480p");
+  await expect(downloadLink).toHaveAttribute("target", "_blank");
+  await expect(downloadLink).not.toHaveAttribute("download");
+  // Same height as a Button (h-12), not the h-8 the base size variant would add.
+  expect((await downloadLink.boundingBox())?.height).toBe(48);
+  expect(downloadRequests).toEqual([]);
+});
+
+test("on a Web Share-capable browser, prefetches the file for Share while Download stays instant", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.assign(navigator, {
+      canShare: () => true,
+      share: () => Promise.resolve(),
+    });
+  });
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ json: VIDEO_FIXTURE }),
+  );
+  const downloadRequests: string[] = [];
+  let releaseBlob!: () => void;
+  const blobGate = new Promise<void>((resolve) => (releaseBlob = resolve));
+  await page.route("**/api/download*", async (route) => {
+    downloadRequests.push(route.request().url());
+    await blobGate;
+    await route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" });
+  });
+
+  await page.goto("/");
+  await page.getByLabel(/X \(Twitter\) post link/i).fill("https://x.com/someone/status/2");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  // While the blob is still in flight: Share is "Preparing…", Download is live.
+  const shareButton = page.getByRole("button", { name: /preparing/i });
+  await expect(shareButton).toBeDisabled({ timeout: 5000 });
+  await expect(page.getByRole("link", { name: /^download$/i })).toBeVisible();
+  expect(downloadRequests).toHaveLength(1);
+  expect(new URL(downloadRequests[0]).searchParams.get("url")).toBe(
+    "/mock/sample-video-720p.mp4",
+  );
+
+  releaseBlob();
+  await expect(page.getByRole("button", { name: /^share$/i })).toBeEnabled({ timeout: 5000 });
 });
 
 test("shows an inline error for a non-X url without blocking the input", async ({

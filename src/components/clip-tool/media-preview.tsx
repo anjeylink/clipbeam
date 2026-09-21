@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImageIcon, PlayCircle } from "lucide-react";
 import { useIntlayer } from "next-intlayer";
 import type { ParsedXMedia } from "@/lib/parse-x-url";
+import { mediaProxyUrl } from "@/lib/media-proxy-url";
 
 interface MediaPreviewProps {
   media: ParsedXMedia;
@@ -23,7 +24,8 @@ export function MediaPreview({ media, selectedQualityIndex }: MediaPreviewProps)
             poster={media.posterUrl}
             className="aspect-video w-full bg-black"
           >
-            <source src={activeQuality?.url} />
+            {/* Via the proxy: video.twimg.com 403s a browser-referred request. */}
+            <source src={mediaProxyUrl(activeQuality!.url)} />
           </video>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element

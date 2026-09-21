@@ -2,9 +2,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "./route";
 
-function makeRequest(url?: string) {
-  const query = url ? `?url=${encodeURIComponent(url)}` : "";
-  return new NextRequest(`http://localhost/api/download${query}`);
+function makeRequest(url?: string, filename?: string, headers?: HeadersInit) {
+  const params = new URLSearchParams();
+  if (url) params.set("url", url);
+  if (filename !== undefined) params.set("filename", filename);
+  const query = params.size ? `?${params}` : "";
+  return new NextRequest(`http://localhost/api/download${query}`, { headers });
+}
+
+function stubUpstream(contentType: string) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      body: new ReadableStream(),
+      headers: new Headers({ "content-type": contentType }),
+    })),
+  );
 }
 
 describe("GET /api/download", () => {
@@ -46,6 +61,63 @@ describe("GET /api/download", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("video/mp4");
     expect(res.headers.get("content-length")).toBe("12345");
+  });
+
+  it("forwards a Range request upstream and passes the 206 back so <video> can seek", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(async () => ({
+      ok: true,
+      status: 206,
+      body: new ReadableStream(),
+      headers: new Headers({
+        "content-type": "video/mp4",
+        "content-length": "1000",
+        "content-range": "bytes 0-999/5000",
+      }),
+    }) as unknown as Response);
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await GET(
+      makeRequest("https://video.twimg.com/vid/1280x720/a.mp4", undefined, {
+        range: "bytes=0-999",
+      }),
+    );
+
+    expect(fetchSpy.mock.calls[0][1]).toMatchObject({ headers: { Range: "bytes=0-999" } });
+    expect(res.status).toBe(206);
+    expect(res.headers.get("content-range")).toBe("bytes 0-999/5000");
+    expect(res.headers.get("accept-ranges")).toBe("bytes");
+  });
+
+  it("sends no Content-Disposition when no filename is requested", async () => {
+    stubUpstream("video/mp4");
+
+    const res = await GET(makeRequest("https://video.twimg.com/vid/1280x720/a.mp4"));
+
+    expect(res.headers.get("content-disposition")).toBeNull();
+  });
+
+  it("marks the response as an attachment named from the filename param and content-type", async () => {
+    stubUpstream("image/png");
+
+    const res = await GET(
+      makeRequest("https://pbs.twimg.com/media/a?format=png", "clipbeam-jack-image"),
+    );
+
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="clipbeam-jack-image.png"',
+    );
+  });
+
+  it("sanitizes a hostile filename param", async () => {
+    stubUpstream("video/mp4");
+
+    const res = await GET(
+      makeRequest("https://video.twimg.com/vid/1280x720/a.mp4", '../x"\r\nSet-Cookie: a=b'),
+    );
+
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="_x___Set-Cookie__a_b.mp4"',
+    );
   });
 
   it("forwards an upstream 403 instead of masking it", async () => {

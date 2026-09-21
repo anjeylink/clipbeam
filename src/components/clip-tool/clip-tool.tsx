@@ -13,7 +13,7 @@ import { ShareActions } from "./share-actions";
 
 export function ClipTool() {
   const content = useIntlayer("clip-tool");
-  const { state, setUrl, submit, selectQuality, retryBlob } = useClipTool();
+  const { state, setUrl, submit, selectQuality, ensureBlob, retryBlob } = useClipTool();
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
   const didAttemptRestoreRef = useRef(false);
 
@@ -89,6 +89,7 @@ export function ClipTool() {
                 selectedQualityIndex={state.selectedQualityIndex}
                 blob={state.blob}
                 blobStatus={state.blobStatus}
+                onEnsureBlob={ensureBlob}
                 onRetryBlob={retryBlob}
               />
             </div>

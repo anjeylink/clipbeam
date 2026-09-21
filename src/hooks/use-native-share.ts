@@ -15,15 +15,15 @@ interface UseNativeShareOptions {
 interface UseNativeShareResult {
   /** True once the OS share sheet can accept this file (mostly mobile browsers). */
   canShareFiles: boolean;
-  /** True once the blob has resolved and share()/download() can act on it. */
+  /** True once the blob has resolved and share() can act on it. */
   isReady: boolean;
   share: () => Promise<void>;
-  download: () => void;
   shareError: ShareErrorCode | null;
 }
 
 /**
- * Feature-detects Web Share API file support and exposes share/download.
+ * Feature-detects Web Share API file support and exposes share. Plain
+ * downloads don't go through here — they stream via /api/download.
  * Detection runs only in an effect (never during render) to avoid an
  * SSR/hydration mismatch, since `navigator` doesn't exist on the server.
  */
@@ -69,17 +69,5 @@ export function useNativeShare({
     }
   }, [blob, filename, mimeType, shareTitle, shareText]);
 
-  const download = useCallback(() => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  }, [blob, filename]);
-
-  return { canShareFiles, isReady: blob !== null, share, download, shareError };
+  return { canShareFiles, isReady: blob !== null, share, shareError };
 }
