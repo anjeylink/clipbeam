@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { getIntlayer } from "intlayer";
-import { getLocale } from "next-intlayer/server";
+import { getIntlayer, type Locale } from "intlayer";
 import { useIntlayer } from "next-intlayer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -8,9 +7,14 @@ import { LegalPage } from "@/components/legal-page";
 
 export const dynamic = "force-static";
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const { title, description } = getIntlayer("dmca-page-metadata", locale);
+export const generateMetadata = async ({
+  params,
+}: PageProps<"/[locale]/dmca">): Promise<Metadata> => {
+  const { locale } = await params;
+  const { title, description } = getIntlayer(
+    "dmca-page-metadata",
+    locale as Locale,
+  );
 
   return { title, description };
 };

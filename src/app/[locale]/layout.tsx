@@ -1,24 +1,29 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { getHTMLTextDir, getIntlayer } from "intlayer";
-import { getLocale, IntlayerProvider } from "next-intlayer/server";
+import { getHTMLTextDir, getIntlayer, type Locale } from "intlayer";
+import { IntlayerProvider } from "next-intlayer/server";
 import "../globals.css";
 
 export { generateStaticParams } from "next-intlayer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
 });
 
-export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = await getLocale();
-  const { title, description } = getIntlayer("page-metadata", locale);
+export const generateMetadata = async ({
+  params,
+}: LayoutProps<"/[locale]">): Promise<Metadata> => {
+  const { locale } = await params;
+  const { title, description } = getIntlayer(
+    "page-metadata",
+    locale as Locale,
+  );
 
   return { title, description };
 };
