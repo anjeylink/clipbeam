@@ -60,7 +60,7 @@ export function UrlInputForm({
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
-              placeholder="https://x.com/username/status/1234567890"
+              placeholder={String(content.placeholder)}
               value={value}
               onChange={(event) => onValueChange(event.target.value)}
               disabled={isBusy}

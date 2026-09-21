@@ -7,6 +7,10 @@ const urlInputFormContent = {
       en: "X (Twitter) post link",
       uk: "Посилання на пост X (Twitter)",
     }),
+    placeholder: t({
+      en: "Paste a post link here",
+      uk: "Вставте посилання на пост сюди",
+    }),
     pasteAriaLabel: t({
       en: "Paste link from clipboard",
       uk: "Вставити посилання з буфера обміну",
