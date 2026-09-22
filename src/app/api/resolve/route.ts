@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     return errorResponse("invalid-format", 400);
   }
 
+  console.log(`[resolve] ${rawUrl} ${new Date().toISOString()}`);
+
   let resolvedUrl = rawUrl.trim();
   let validation = initialValidation;
 
