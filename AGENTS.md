@@ -27,3 +27,9 @@ No CI and no pre-commit hooks exist in this repo — nothing checks your work au
 ## TypeScript version
 
 TypeScript is pinned to `^6.0.3`, past this model's training cutoff — don't assume TS 5-era syntax or compiler options are still current. Check `tsconfig.json` and the installed `typescript` version before relying on anything you're not certain still applies.
+
+## Grilling
+
+When running a grilling session (interviewing the user round-by-round to build a design tree), ask each round's questions with the native `AskUserQuestion` tool instead of plain chat text — never number questions in a text block when this tool is available. Split a round into multiple `AskUserQuestion` calls if it has more than 4 questions, since that tool caps at 4 per call.
+
+Every question needs a recommended answer, per the grilling skill — and the tool doesn't surface that on its own. Make the recommended option the first one listed and append `(Recommended)` to its label; otherwise the user has no way to see which option you'd pick.
