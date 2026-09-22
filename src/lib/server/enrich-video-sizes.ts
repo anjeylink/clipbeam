@@ -1,4 +1,4 @@
-import type { ParsedXMedia } from "@/lib/x-media-types";
+import type { ResolvedMedia } from "@/lib/server/resolved-media";
 
 const HEAD_TIMEOUT_MS = 3000;
 
@@ -21,7 +21,7 @@ async function fetchContentLengthMb(url: string): Promise<number | null> {
  * post-processing pass over mapTweetJsonToMedia's output (rather than baked
  * into it) so that mapping stays pure and synchronously testable.
  */
-export async function enrichVideoQualitySizes(media: ParsedXMedia): Promise<ParsedXMedia> {
+export async function enrichVideoQualitySizes(media: ResolvedMedia): Promise<ResolvedMedia> {
   if (media.kind !== "video" || !media.qualities) return media;
 
   const qualities = await Promise.all(

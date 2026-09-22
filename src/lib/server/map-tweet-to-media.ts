@@ -1,10 +1,10 @@
-import type { ParsedXMedia, VideoQualityOption } from "@/lib/x-media-types";
+import type { ResolvedMedia, ResolvedVideoQuality } from "@/lib/server/resolved-media";
 import type { ParseXUrlErrorCode } from "@/lib/parse-x-url";
 
 export class TweetResolutionError extends Error {
   readonly code: Extract<
     ParseXUrlErrorCode,
-    "unsupported-post" | "no-media" | "multi-media-unsupported"
+    "unsupported-post" | "no-media" | "multi-media-unsupported" | "unsupported-media-host"
   >;
 
   constructor(code: TweetResolutionError["code"]) {
@@ -46,13 +46,13 @@ function labelForDimensions(width: number, height: number): string {
   return `${Math.min(width, height)}p`;
 }
 
-function buildVideoQualities(detail: SyndicationMediaDetail): VideoQualityOption[] {
+function buildVideoQualities(detail: SyndicationMediaDetail): ResolvedVideoQuality[] {
   const durationMs = detail.video_info?.duration_millis ?? 0;
   const variants = detail.video_info?.variants ?? [];
 
   return variants
     .filter((variant) => variant.content_type === "video/mp4")
-    .map((variant, index): VideoQualityOption => {
+    .map((variant, index): ResolvedVideoQuality => {
       // Resolution is usually encoded in the variant URL path (.../vid/WxH/...),
       // but animated_gif mp4 variants (e.g. .../tweet_video/...) often lack it —
       // fall back to the media detail's overall dimensions, then to an
@@ -77,13 +77,13 @@ function buildVideoQualities(detail: SyndicationMediaDetail): VideoQualityOption
 
 /**
  * Maps a raw JSON response from the syndication endpoint to our internal
- * ParsedXMedia shape. Pure/no I/O — throws TweetResolutionError for
+ * ResolvedMedia shape. Pure/no I/O — throws TweetResolutionError for
  * unavailable/tombstoned posts, posts with no media, or multi-photo posts
  * (out of scope for this pass). Animated GIFs are treated identically to
  * videos: X delivers them as an mp4 entry in video_info.variants, so they
  * flow through the same mapping as a regular video at no extra cost.
  */
-export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ParsedXMedia {
+export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMedia {
   const parsed = tweet as SyndicationTweet;
 
   if (parsed?.__typename === "TweetTombstone") {

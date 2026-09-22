@@ -1,4 +1,3 @@
-import { mediaProxyUrl } from "@/lib/media-proxy-url";
 import {
   parseXUrl,
   validateXUrl,
@@ -38,17 +37,16 @@ export type ClipToolState =
 const DEFAULT_QUALITY_MAX_SHORT_EDGE = 720;
 
 function defaultQualityIndex(media: ParsedXMedia): number {
-  const qualities = media.qualities;
-  if (media.kind !== "video" || !qualities || qualities.length === 0) return 0;
-  const index = qualities.findIndex(
+  if (media.kind !== "video" || media.qualities.length === 0) return 0;
+  const index = media.qualities.findIndex(
     (q) => Math.min(q.width, q.height) <= DEFAULT_QUALITY_MAX_SHORT_EDGE,
   );
-  return index === -1 ? qualities.length - 1 : index;
+  return index === -1 ? media.qualities.length - 1 : index;
 }
 
-/** The upstream CDN URL for the media (or the selected video quality). */
-export function mediaSourceUrl(media: ParsedXMedia, qualityIndex: number): string {
-  return media.kind === "image" ? media.imageUrl! : media.qualities![qualityIndex].url;
+/** The already-proxied URL for the media (or the selected video quality). */
+function proxiedMediaUrl(media: ParsedXMedia, qualityIndex: number): string {
+  return media.kind === "video" ? media.qualities[qualityIndex].proxiedUrl : media.proxiedUrl;
 }
 
 export const URL_QUERY_PARAM = "url";
@@ -161,7 +159,7 @@ class ClipToolStore {
     // the new one if the Share flow wants it.
     this.blobAbortController?.abort();
     this.blobRequestId++;
-    const cached = this.blobCache.get(mediaSourceUrl(this.state.media, index));
+    const cached = this.blobCache.get(proxiedMediaUrl(this.state.media, index));
     this.setState({
       ...this.state,
       selectedQualityIndex: index,
@@ -202,12 +200,11 @@ class ClipToolStore {
 
     const { media, selectedQualityIndex } = this.state;
     const requestId = ++this.blobRequestId;
-    const rawUrl = mediaSourceUrl(media, selectedQualityIndex);
-    // Routed through our own /api/download rather than fetched directly:
-    // video.twimg.com 403s browser-originated cross-origin requests (likely
-    // anti-hotlink filtering on Origin/Referer), unlike pbs.twimg.com. The
-    // proxy sidesteps that for both media kinds uniformly.
-    const sourceUrl = mediaProxyUrl(rawUrl);
+    // Already proxied by toClientMedia server-side: video.twimg.com 403s
+    // browser-originated cross-origin requests, so every media URL the
+    // client holds is either hotlink-safe or already routed through
+    // /api/download — this store never has to know which.
+    const sourceUrl = proxiedMediaUrl(media, selectedQualityIndex);
 
     fetch(sourceUrl, { signal: controller.signal })
       .then((res) => {
@@ -216,7 +213,7 @@ class ClipToolStore {
       })
       .then((blob) => {
         if (this.blobRequestId !== requestId || this.state.status !== "loaded") return;
-        this.blobCache.set(rawUrl, blob);
+        this.blobCache.set(sourceUrl, blob);
         this.setState({ ...this.state, blob, blobStatus: "ready" });
       })
       .catch((err: unknown) => {

@@ -52,6 +52,51 @@ describe("GET /api/resolve", () => {
     expect(body.kind).toBe("video");
     expect(body.authorHandle).toBe("someone");
     expect(body.qualities).toHaveLength(1);
+    // Proxied, not the raw video.twimg.com URL: video hotlinking 403s.
+    expect(body.qualities[0].proxiedUrl).toMatch(/^\/api\/download\?url=/);
+    expect(body.qualities[0].url).toBeUndefined();
+  });
+
+  it("resolves a photo tweet with a raw, unproxied previewUrl and a proxied download url", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          __typename: "Tweet",
+          user: { screen_name: "someone" },
+          mediaDetails: [{ type: "photo", media_url_https: "https://pbs.twimg.com/a.jpg" }],
+        }),
+      })),
+    );
+
+    const res = await GET(makeRequest("https://x.com/someone/status/123"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.kind).toBe("image");
+    // pbs.twimg.com allows hotlinking, so the preview skips our proxy.
+    expect(body.previewUrl).toBe("https://pbs.twimg.com/a.jpg");
+    expect(body.proxiedUrl).toMatch(/^\/api\/download\?url=/);
+  });
+
+  it("rejects media on a host outside the proxy allowlist", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          __typename: "Tweet",
+          user: { screen_name: "someone" },
+          mediaDetails: [{ type: "photo", media_url_https: "https://evil.example.com/a.jpg" }],
+        }),
+      })),
+    );
+
+    const res = await GET(makeRequest("https://x.com/someone/status/123"));
+    expect(res.status).toBe(422);
+    expect((await res.json()).code).toBe("unsupported-media-host");
   });
 
   it("maps a 404 from the syndication endpoint to not-found", async () => {

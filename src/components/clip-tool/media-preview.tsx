@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { ImageIcon, PlayCircle } from "lucide-react";
 import { useIntlayer } from "next-intlayer";
 import type { ParsedXMedia } from "@/lib/parse-x-url";
-import { mediaProxyUrl } from "@/lib/media-proxy-url";
 
 interface MediaPreviewProps {
   media: ParsedXMedia;
@@ -12,25 +11,24 @@ interface MediaPreviewProps {
 export function MediaPreview({ media, selectedQualityIndex }: MediaPreviewProps) {
   const content = useIntlayer("media-preview");
   const isVideo = media.kind === "video";
-  const activeQuality = isVideo ? media.qualities![selectedQualityIndex] : null;
+  const activeQuality = isVideo ? media.qualities[selectedQualityIndex] : null;
 
   return (
     <div className="flex flex-col gap-3">
       <div className="relative overflow-hidden rounded-lg bg-muted">
         {isVideo ? (
           <video
-            key={activeQuality?.url}
+            key={activeQuality?.proxiedUrl}
             controls
             poster={media.posterUrl}
             className="aspect-video w-full bg-black"
           >
-            {/* Via the proxy: video.twimg.com 403s a browser-referred request. */}
-            <source src={mediaProxyUrl(activeQuality!.url)} />
+            <source src={activeQuality?.proxiedUrl} />
           </video>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={media.imageUrl}
+            src={media.previewUrl}
             alt={content.altText({ handle: media.authorHandle })}
             className="aspect-video w-full object-contain"
           />

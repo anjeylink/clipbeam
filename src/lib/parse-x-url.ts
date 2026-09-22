@@ -58,6 +58,7 @@ export type ParseXUrlErrorCode =
   | "unsupported-post"
   | "no-media"
   | "multi-media-unsupported"
+  | "unsupported-media-host"
   | "rate-limited"
   | "unknown";
 
@@ -80,6 +81,7 @@ function isParseXUrlErrorCode(value: unknown): value is ParseXUrlErrorCode {
       "unsupported-post",
       "no-media",
       "multi-media-unsupported",
+      "unsupported-media-host",
       "rate-limited",
       "unknown",
     ].includes(value)

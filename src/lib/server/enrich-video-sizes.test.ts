@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { enrichVideoQualitySizes } from "./enrich-video-sizes";
-import type { ParsedXMedia } from "@/lib/x-media-types";
+import type { ResolvedMedia } from "@/lib/server/resolved-media";
 
-function videoMedia(qualities: ParsedXMedia["qualities"]): ParsedXMedia {
+function videoMedia(qualities: ResolvedMedia["qualities"]): ResolvedMedia {
   return {
     postUrl: "https://x.com/someone/status/123",
     authorHandle: "someone",
@@ -20,7 +20,7 @@ describe("enrichVideoQualitySizes", () => {
   it("passes non-video media through untouched, without hitting the network", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    const image: ParsedXMedia = {
+    const image: ResolvedMedia = {
       postUrl: "https://x.com/someone/status/123",
       authorHandle: "someone",
       kind: "image",

@@ -4,6 +4,7 @@ import { computeSyndicationToken } from "@/lib/server/twitter-token";
 import { mapTweetJsonToMedia, TweetResolutionError } from "@/lib/server/map-tweet-to-media";
 import { resolveShortLink, ShortLinkResolutionError } from "@/lib/server/resolve-short-link";
 import { enrichVideoQualitySizes } from "@/lib/server/enrich-video-sizes";
+import { toClientMedia } from "@/lib/server/to-client-media";
 
 function errorResponse(code: ParseXUrlErrorCode, status: number) {
   return NextResponse.json({ code }, { status });
@@ -72,7 +73,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const media = mapTweetJsonToMedia(tweetJson, resolvedUrl);
-    return NextResponse.json(await enrichVideoQualitySizes(media));
+    const enriched = await enrichVideoQualitySizes(media);
+    return NextResponse.json(toClientMedia(enriched));
   } catch (err) {
     if (err instanceof TweetResolutionError) {
       return errorResponse(err.code, 422);

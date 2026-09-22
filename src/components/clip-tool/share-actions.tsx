@@ -9,8 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNativeShare } from "@/hooks/use-native-share";
 import type { ParsedXMedia } from "@/lib/parse-x-url";
 import type { BlobStatus } from "@/hooks/use-clip-tool";
-import { mediaSourceUrl } from "@/lib/clip-tool-store";
-import { mediaProxyUrl } from "@/lib/media-proxy-url";
+import { appendDownloadFilename } from "@/lib/append-download-filename";
 import { extensionFromMimeType } from "@/lib/media-filename";
 
 interface ShareActionsProps {
@@ -32,7 +31,7 @@ export function ShareActions({
 }: ShareActionsProps) {
   const content = useIntlayer("share-actions");
   const isVideo = media.kind === "video";
-  const activeQuality = isVideo ? media.qualities![selectedQualityIndex] : null;
+  const activeQuality = isVideo ? media.qualities[selectedQualityIndex] : null;
   // The real blob's Content-Type (once fetched) is authoritative — X photos
   // can be PNG/WebP, not just JPEG — with a guessed fallback so the Share
   // feature-detection probe (see useNativeShare) has something to check
@@ -45,7 +44,8 @@ export function ShareActions({
   // Download streams straight from our proxy as an attachment, so it starts
   // instantly and never waits on (or holds in memory) the blob below, which
   // only exists to feed Share.
-  const downloadHref = mediaProxyUrl(mediaSourceUrl(media, selectedQualityIndex), filenameBase);
+  const proxiedUrl = media.kind === "video" ? media.qualities[selectedQualityIndex].proxiedUrl : media.proxiedUrl;
+  const downloadHref = appendDownloadFilename(proxiedUrl, filenameBase);
 
   const { canShareFiles, share, shareError } = useNativeShare({
     blob,

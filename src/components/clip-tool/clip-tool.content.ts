@@ -36,6 +36,10 @@ const clipToolContent = {
         en: "Posts with multiple photos aren't supported yet — try a post with a single image or video.",
         uk: "Пости з кількома фото поки не підтримуються — спробуйте пост з одним зображенням або відео.",
       }),
+      "unsupported-media-host": t({
+        en: "That post's media couldn't be verified as safe to fetch. Try a different post.",
+        uk: "Не вдалося підтвердити, що медіа цього поста безпечне для завантаження. Спробуйте інший пост.",
+      }),
       "rate-limited": t({
         en: "X is rate-limiting requests right now. Wait a moment and try again.",
         uk: "X зараз обмежує кількість запитів. Зачекайте трохи і спробуйте ще раз.",
