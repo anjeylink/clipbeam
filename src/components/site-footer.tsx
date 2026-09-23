@@ -1,6 +1,7 @@
 import { getLocalizedUrl } from "intlayer";
 import { useIntlayer, useLocale } from "next-intlayer";
 import Link from "next/link";
+import { BeamFooterLink } from "@/components/beam/beam-footer-link";
 
 export function SiteFooter() {
   const content = useIntlayer("site-footer");
@@ -22,6 +23,7 @@ export function SiteFooter() {
           <Link href={getLocalizedUrl("/dmca", locale)} className="hover:text-foreground">
             {content.links.dmca}
           </Link>
+          <BeamFooterLink />
         </nav>
         <p>{content.disclaimer}</p>
       </div>

@@ -26,6 +26,15 @@ No CI and no pre-commit hooks exist in this repo — nothing checks your work au
 
 The allowlist in `src/lib/server/media-proxy.ts` is per-Platform: exact hosts for X, dot-anchored suffixes (`.fbcdn.net`, `.cdninstagram.com`) for Threads, and `/api/download` re-checks every redirect hop against it (see `docs/adr/0002-per-platform-suffix-allowlist.md`). Never widen it to a substring match.
 
+## Beam
+
+Beam (`/beam`, `/api/beam/*`, `public/sw.js`) is the owner-only relay from desktop to phone described in `docs/adr/0003-beam-single-secret-web-push.md`. It needs these env vars, and it is inert without them. The public site doesn't need them.
+- `BEAM_SECRET`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:`). Generate the keys with `pnpm dlx web-push generate-vapid-keys`.
+- The Upstash Redis REST URL and token: `UPSTASH_REDIS_REST_*` or `KV_REST_API_*`.
+
+The e2e suite gets a fixed `BEAM_SECRET` through `webServer.env` in `playwright.config.ts`. If you reuse a dev server that's already running, start it with the same value, or the paired Beam tests fail.
+
 ## TypeScript version
 
 TypeScript is pinned to `^6.0.3`, past this model's training cutoff — don't assume TS 5-era syntax or compiler options are still current. Check `tsconfig.json` and the installed `typescript` version before relying on anything you're not certain still applies.

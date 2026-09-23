@@ -37,5 +37,7 @@ export default defineConfig({
     command: "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    // e2e/beam.spec.ts signs its pairing cookie with the same key.
+    env: { BEAM_SECRET: "e2e-beam-secret" },
   },
 });

@@ -23,3 +23,7 @@ _Avoid_: ParsedXMedia, client media, resolved payload
 **Media Proxy**:
 A same-origin stand-in for a CDN URL the browser can't (or shouldn't) fetch directly, turning "fetch this externally-hosted file" into "fetch this from our own origin" so the CDN's cross-origin restrictions never reach the browser. Only fetches hosts on a Platform's allowlist.
 _Avoid_: download endpoint, download proxy
+
+**Beam**:
+The owner-only relay that takes a Post link pasted on one device (usually a computer) and delivers it as a push notification to a paired phone. Tapping the notification opens the clip tool with the Post preloaded, so a single tap on Share opens the OS share sheet. A Beam carries only the link; the phone resolves the media itself.
+_Avoid_: inbox, send-to-phone (as a noun), relay

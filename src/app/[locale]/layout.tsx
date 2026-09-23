@@ -4,6 +4,7 @@ import { getHTMLTextDir } from "intlayer";
 import { IntlayerProvider } from "next-intlayer/server";
 import { Analytics } from "@vercel/analytics/next";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
+import { BeamMessageListener } from "@/components/beam/beam-message-listener";
 import "../globals.css";
 
 export { generateStaticParams } from "next-intlayer";
@@ -43,7 +44,10 @@ export default async function LocaleLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <IntlayerProvider locale={locale}>{children}</IntlayerProvider>
+        <IntlayerProvider locale={locale}>
+          <BeamMessageListener />
+          {children}
+        </IntlayerProvider>
         <Analytics />
       </body>
     </html>
