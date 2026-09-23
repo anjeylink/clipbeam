@@ -57,6 +57,21 @@ describe("mapThreadsPageToMedia", () => {
     );
   });
 
+  it("maps a text post linking to an Instagram reel to the reel's video, credited to its author", () => {
+    const media = mapThreadsPageToMedia(fixture("link-to-instagram-video"), "DdmXUCrII-S");
+    expect(media).toMatchObject({
+      platform: "threads",
+      kind: "video",
+      authorHandle: "brain_auto",
+      postUrl: "https://www.threads.com/@ronaldojcoutinho7/post/DdmXUCrII-S",
+    });
+    expect(media.posterUrl).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\//);
+    expect(media.qualities).toEqual([
+      expect.objectContaining({ label: "720p", width: 720, height: 1280 }),
+    ]);
+    expect(media.qualities?.[0].url).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\//);
+  });
+
   it("rejects a carousel as multi-media-unsupported", () => {
     expect(errorCode(() => mapThreadsPageToMedia(fixture("carousel"), "DZ7eGA1G7wU"))).toBe(
       "multi-media-unsupported",
