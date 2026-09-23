@@ -156,6 +156,38 @@ test("on a Web Share-capable browser, prefetches the file for Share while Downlo
   await expect(page.getByRole("button", { name: /^share$/i })).toBeEnabled({ timeout: 5000 });
 });
 
+test("Share hands the OS share sheet only the media file, no title or text", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.assign(navigator, {
+      canShare: () => true,
+      share: (data: ShareData) => {
+        (window as unknown as { sharedKeys: string[] }).sharedKeys = Object.keys(data);
+        return Promise.resolve();
+      },
+    });
+  });
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ json: VIDEO_FIXTURE }),
+  );
+  await page.route("**/api/download*", (route) =>
+    route.request().resourceType() === "media"
+      ? route.abort()
+      : route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  // Messengers like Telegram send any title/text as a second message.
+  const shareButton = page.getByRole("button", { name: /^share$/i });
+  await expect(shareButton).toBeEnabled({ timeout: 5000 });
+  await shareButton.click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { sharedKeys?: string[] }).sharedKeys))
+    .toEqual(["files"]);
+});
+
 test("on a phone, stacked Share and Download keep their full tap height", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {

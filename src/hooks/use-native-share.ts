@@ -8,8 +8,6 @@ interface UseNativeShareOptions {
   blob: Blob | null;
   filename: string;
   mimeType: string;
-  shareTitle?: string;
-  shareText?: string;
 }
 
 interface UseNativeShareResult {
@@ -31,8 +29,6 @@ export function useNativeShare({
   blob,
   filename,
   mimeType,
-  shareTitle,
-  shareText,
 }: UseNativeShareOptions): UseNativeShareResult {
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [shareError, setShareError] = useState<ShareErrorCode | null>(null);
@@ -62,12 +58,14 @@ export function useNativeShare({
     setShareError(null);
     try {
       const file = new File([blob], filename, { type: mimeType });
-      await navigator.share({ files: [file], title: shareTitle, text: shareText });
+      // Files only: messengers like Telegram send any title/text as a
+      // separate message alongside the media.
+      await navigator.share({ files: [file] });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setShareError("interrupted");
     }
-  }, [blob, filename, mimeType, shareTitle, shareText]);
+  }, [blob, filename, mimeType]);
 
   return { canShareFiles, isReady: blob !== null, share, shareError };
 }

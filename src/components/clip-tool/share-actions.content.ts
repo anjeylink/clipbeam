@@ -1,4 +1,4 @@
-import { insert, t, type Dictionary } from "intlayer";
+import { t, type Dictionary } from "intlayer";
 
 const shareActionsContent = {
   key: "share-actions",
@@ -23,16 +23,6 @@ const shareActionsContent = {
       en: "Couldn't prepare the file. Check your connection and try again.",
       uk: "Не вдалося підготувати файл. Перевірте з'єднання і спробуйте ще раз.",
     }),
-    shareTitle: t({
-      en: "ClipBeam",
-      uk: "ClipBeam",
-    }),
-    shareText: insert(
-      t({
-        en: "Media from @{{handle}}'s post",
-        uk: "Медіа з поста @{{handle}}",
-      }),
-    ),
     errors: {
       interrupted: t({
         en: "Sharing was interrupted. Try again, or download instead.",

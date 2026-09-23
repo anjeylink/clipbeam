@@ -52,8 +52,6 @@ export function ShareActions({
     blob,
     filename,
     mimeType,
-    shareTitle: String(content.shareTitle),
-    shareText: content.shareText({ handle: media.authorHandle }),
   });
 
   // Only browsers that can share files need the blob, so only they pay for
