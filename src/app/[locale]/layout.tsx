@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getHTMLTextDir } from "intlayer";
 import { IntlayerProvider } from "next-intlayer/server";
+import { Analytics } from "@vercel/analytics/next";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
 import "../globals.css";
 
@@ -43,6 +44,7 @@ export default async function LocaleLayout({
     >
       <body className="min-h-full flex flex-col">
         <IntlayerProvider locale={locale}>{children}</IntlayerProvider>
+        <Analytics />
       </body>
     </html>
   );
