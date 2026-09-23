@@ -23,6 +23,14 @@ test("unknown paths with a dot 404 instead of rendering the home page", async ({
   }
 });
 
+test("the favicon is served for browsers that request it by default", async ({
+  request,
+}) => {
+  const response = await request.get("/favicon.ico");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("image/x-icon");
+});
+
 test("the default locale's prefixed URLs redirect permanently", async ({
   request,
 }) => {
