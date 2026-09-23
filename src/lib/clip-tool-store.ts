@@ -54,13 +54,13 @@ function proxiedMediaUrl(media: ParsedMedia, qualityIndex: number): string {
 
 export const URL_QUERY_PARAM = "url";
 
-// Keeps the submitted post URL in the address bar (?url=...) via the raw
-// History API — not next/navigation's router — so this has zero
-// interaction with App Router's RSC lifecycle and can't trigger a
-// server-component re-render for a `force-static` page. This is what lets
-// a hard reload or a pasted/shared link restore the submitted URL (the
-// parsed media/blob still have to be re-fetched — those can't live in a
-// URL — but the user doesn't have to re-paste the link).
+// The address bar (?url=...) is the source of truth for which post the tool
+// shows: a reload, a shared link, or a locale switch that carries the query
+// all restore it, and navigating to a URL without it (e.g. the header logo)
+// resets the tool. Written via the raw History API — not next/navigation's
+// router — so it can't trigger a server-component re-render for a
+// `force-static` page; Next still syncs the change into useSearchParams,
+// which is how <ClipTool/> feeds it back into syncFromUrl().
 function syncUrlQueryParam(url: string) {
   if (typeof window === "undefined") return;
   const next = new URL(window.location.href);
@@ -69,22 +69,28 @@ function syncUrlQueryParam(url: string) {
   } else {
     next.searchParams.delete(URL_QUERY_PARAM);
   }
-  window.history.replaceState(window.history.state, "", next);
+  // null, not window.history.state: Next treats state carrying its own
+  // `__NA` marker as an internal call and skips syncing useSearchParams.
+  // It copies its internal state over a null itself.
+  window.history.replaceState(null, "", next);
 }
 
 export const IDLE_STATE: ClipToolState = { status: "idle", url: "" };
 
 /**
- * Module-level singleton (not React state) so the paste -> preview ->
- * quality -> share flow, and any in-flight blob fetch, survive remounts of
- * the component tree that holds <ClipTool/> — e.g. the locale switcher
- * navigating to a new `[locale]/page.tsx`, which the App Router always
- * re-renders from scratch even though it's client-side navigation. React
- * components subscribe to this via useSyncExternalStore instead of owning
- * the state themselves.
+ * Module-level singleton (not React state) holding everything the URL can't:
+ * the resolved media, selected quality, and any in-flight blob fetch. It
+ * survives remounts of the component tree that holds <ClipTool/> — e.g. the
+ * locale switcher navigating to a new `[locale]/page.tsx`, which the App
+ * Router always re-renders from scratch — so a remount whose ?url= matches
+ * what's already loaded doesn't refetch. React components subscribe to this
+ * via useSyncExternalStore instead of owning the state themselves.
  */
 class ClipToolStore {
   private state: ClipToolState = IDLE_STATE;
+  // The post URL currently loading or shown — unlike state.url, which is the
+  // live input value and changes as the user types.
+  private activeUrl = "";
   private listeners = new Set<() => void>();
   private submitRequestId = 0;
   private blobRequestId = 0;
@@ -119,10 +125,33 @@ class ClipToolStore {
     this.setState({ ...this.state, url });
   };
 
+  // Always reloads, even for the active URL, so re-submitting after an error
+  // retries.
   submit = (rawUrl: string) => {
     const url = rawUrl.trim();
-    this.setState({ status: "validating", url });
     syncUrlQueryParam(url);
+    this.load(url);
+  };
+
+  // Called whenever ?url= changes (including on mount). A no-op when it
+  // matches what's already loaded, which is what keeps a locale switch from
+  // refetching.
+  syncFromUrl = (param: string | null) => {
+    const url = (param ?? "").trim();
+    if (url === this.activeUrl) return;
+    if (url) {
+      this.load(url);
+    } else {
+      this.clear();
+    }
+  };
+
+  private load(url: string) {
+    this.activeUrl = url;
+    // Bumped before validating so an earlier in-flight resolve can't
+    // overwrite this load's result, even an immediate invalid-format error.
+    const requestId = ++this.submitRequestId;
+    this.setState({ status: "validating", url });
 
     const validation = validatePostUrl(url);
     if (!validation.valid) {
@@ -131,7 +160,6 @@ class ClipToolStore {
     }
     const { platform } = validation;
 
-    const requestId = ++this.submitRequestId;
     this.setState({ status: "loading", url });
     parsePostUrl(url)
       .then((media) => {
@@ -154,7 +182,7 @@ class ClipToolStore {
           err instanceof ParsePostUrlError ? err.code : "unknown";
         this.setState({ status: "error", url, code, platform });
       });
-  };
+  }
 
   selectQuality = (index: number) => {
     if (this.state.status !== "loaded" || this.state.selectedQualityIndex === index) return;
@@ -188,12 +216,19 @@ class ClipToolStore {
   };
 
   reset = () => {
+    syncUrlQueryParam("");
+    this.clear();
+  };
+
+  private clear() {
+    this.activeUrl = "";
+    // Invalidates any in-flight resolve so it can't land after the reset.
+    this.submitRequestId++;
     this.blobCache.clear();
     this.blobAbortController?.abort();
     this.blobRequestId++;
-    syncUrlQueryParam("");
     this.setState(IDLE_STATE);
-  };
+  }
 
   private fetchBlob() {
     if (this.state.status !== "loaded") return;

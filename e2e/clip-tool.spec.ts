@@ -300,3 +300,70 @@ test("accepts a Threads share link instead of rejecting it as invalid", async ({
     "https://www.threads.com/share/_ob4VZH8D/",
   );
 });
+
+// ?url= is the source of truth for which post is shown.
+test.describe("?url= query param", () => {
+  const POST_URL = "https://x.com/someone/status/2";
+
+  test("survives a locale switch without refetching, and restores on reload", async ({
+    page,
+  }) => {
+    const resolveRequests: string[] = [];
+    await page.route("**/api/resolve*", (route) => {
+      resolveRequests.push(route.request().url());
+      return route.fulfill({ json: VIDEO_FIXTURE });
+    });
+
+    await page.goto("/");
+    await page.getByLabel(POST_LINK_LABEL).fill(POST_URL);
+    await page.getByRole("button", { name: /get media/i }).click();
+    await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+    expect(new URL(page.url()).searchParams.get("url")).toBe(POST_URL);
+
+    await page
+      .getByRole("navigation", { name: /language/i })
+      .getByRole("link", { name: "uk" })
+      .click();
+
+    await expect(page).toHaveURL(/\/uk(\?|$)/);
+    expect(new URL(page.url()).searchParams.get("url")).toBe(POST_URL);
+    await expect(page.getByRole("heading", { name: "Перегляд", exact: true })).toBeVisible();
+    expect(resolveRequests).toHaveLength(1);
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Перегляд", exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByLabel(/посилання на пост/i)).toHaveValue(POST_URL);
+  });
+
+  test("a shared link loads the post without submitting", async ({ page }) => {
+    await page.route("**/api/resolve*", (route) => route.fulfill({ json: VIDEO_FIXTURE }));
+
+    await page.goto(`/?${new URLSearchParams({ url: POST_URL })}`);
+
+    await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByLabel(POST_LINK_LABEL)).toHaveValue(POST_URL);
+  });
+
+  test("navigating home via the logo resets the tool", async ({ page }) => {
+    await page.route("**/api/resolve*", (route) => route.fulfill({ json: VIDEO_FIXTURE }));
+
+    await page.goto("/");
+    await page.getByLabel(POST_LINK_LABEL).fill(POST_URL);
+    await page.getByRole("button", { name: /get media/i }).click();
+    await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+
+    await page.getByRole("link", { name: "ClipBeam" }).click();
+
+    await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeHidden();
+    expect(new URL(page.url()).searchParams.has("url")).toBe(false);
+    await expect(page.getByLabel(POST_LINK_LABEL)).toHaveValue("");
+  });
+});

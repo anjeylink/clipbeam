@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useIntlayer } from "next-intlayer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClipTool } from "@/hooks/use-clip-tool";
@@ -15,32 +16,29 @@ import { ShareActions } from "./share-actions";
 // Brand names, so not translated.
 const PLATFORM_NAMES: Record<Platform, string> = { x: "X", threads: "Threads" };
 
+// Feeds ?url= into the store — on mount (a reload, a shared link, or a
+// locale switch) and whenever it changes. Split out so only this
+// null-rendering child suspends on useSearchParams for the `force-static`
+// page, leaving the prerendered form intact.
+function ClipToolUrlSync({ onUrlParam }: { onUrlParam: (param: string | null) => void }) {
+  const param = useSearchParams().get(URL_QUERY_PARAM);
+  useEffect(() => {
+    onUrlParam(param);
+  }, [param, onUrlParam]);
+  return null;
+}
+
 export function ClipTool() {
   const content = useIntlayer("clip-tool");
-  const { state, setUrl, submit, selectQuality, ensureBlob, retryBlob } = useClipTool();
+  const { state, setUrl, submit, syncFromUrl, selectQuality, ensureBlob, retryBlob } =
+    useClipTool();
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
-  const didAttemptRestoreRef = useRef(false);
 
   useEffect(() => {
     if (state.status === "loaded") {
       resultHeadingRef.current?.focus();
     }
   }, [state.status]);
-
-  // Restores the preview from a `?url=` param on a fresh page load (a hard
-  // reload, or a shared/bookmarked link) — the in-memory store above
-  // already handles same-session remounts (e.g. locale switching) without
-  // needing this, since it never went back to "idle" in that case.
-  useEffect(() => {
-    if (didAttemptRestoreRef.current) return;
-    didAttemptRestoreRef.current = true;
-    if (state.status !== "idle") return;
-    const initialUrl = new URLSearchParams(window.location.search).get(URL_QUERY_PARAM);
-    if (initialUrl) submit(initialUrl);
-    // Runs once on mount only — re-checking on every state change would
-    // re-trigger this after the user clears the input back to empty.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const isBusy = state.status === "validating" || state.status === "loading";
   let errorMessage: string | undefined;
@@ -59,6 +57,9 @@ export function ClipTool() {
   return (
     <Card className="w-full max-w-3xl">
       <CardContent className="flex flex-col gap-6">
+        <Suspense fallback={null}>
+          <ClipToolUrlSync onUrlParam={syncFromUrl} />
+        </Suspense>
         <UrlInputForm
           value={state.url}
           onValueChange={setUrl}

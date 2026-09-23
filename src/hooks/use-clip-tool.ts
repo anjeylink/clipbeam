@@ -13,7 +13,7 @@ export type {
  * Subscribes to the module-level clipToolStore rather than owning state
  * locally, so the flow survives remounts of whatever renders <ClipTool/>
  * (e.g. locale navigation remounting `[locale]/page.tsx`) instead of
- * resetting to idle.
+ * refetching. Which post is shown comes from ?url= via syncFromUrl.
  */
 export function useClipTool() {
   const state = useSyncExternalStore(
@@ -26,6 +26,7 @@ export function useClipTool() {
     state,
     setUrl: clipToolStore.setUrl,
     submit: clipToolStore.submit,
+    syncFromUrl: clipToolStore.syncFromUrl,
     selectQuality: clipToolStore.selectQuality,
     ensureBlob: clipToolStore.ensureBlob,
     retryBlob: clipToolStore.retryBlob,
