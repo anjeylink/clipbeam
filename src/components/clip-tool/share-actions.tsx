@@ -73,7 +73,7 @@ export function ShareActions({
             type="button"
             onClick={share}
             disabled={isPreparing || isError}
-            className="h-12 flex-1 px-4"
+            className="h-12 px-4 sm:flex-1"
           >
             {isPreparing ? (
               <>
@@ -101,7 +101,7 @@ export function ShareActions({
           rel="noopener"
           className={cn(
             buttonVariants({ variant: canShareFiles ? "outline" : "default" }),
-            "h-12 flex-1 px-4",
+            "h-12 px-4 sm:flex-1",
           )}
         >
           <Download data-icon="inline-start" className="size-4" aria-hidden="true" />

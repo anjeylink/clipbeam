@@ -156,6 +156,34 @@ test("on a Web Share-capable browser, prefetches the file for Share while Downlo
   await expect(page.getByRole("button", { name: /^share$/i })).toBeEnabled({ timeout: 5000 });
 });
 
+test("on a phone, stacked Share and Download keep their full tap height", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    Object.assign(navigator, {
+      canShare: () => true,
+      share: () => Promise.resolve(),
+    });
+  });
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ json: VIDEO_FIXTURE }),
+  );
+  await page.route("**/api/download*", (route) =>
+    route.request().resourceType() === "media"
+      ? route.abort()
+      : route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  // In the mobile column a flex-basis of 0 would collapse both to text height.
+  const shareButton = page.getByRole("button", { name: /^share$/i });
+  await expect(shareButton).toBeEnabled({ timeout: 5000 });
+  expect((await shareButton.boundingBox())?.height).toBe(48);
+  expect((await page.getByRole("link", { name: /^download$/i }).boundingBox())?.height).toBe(48);
+});
+
 test("shows an inline error for an unsupported url without blocking the input", async ({
   page,
 }) => {
