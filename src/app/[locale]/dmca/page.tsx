@@ -4,6 +4,7 @@ import { useIntlayer } from "next-intlayer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LegalPage } from "@/components/legal-page";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
@@ -16,7 +17,13 @@ export const generateMetadata = async ({
     locale as Locale,
   );
 
-  return { title, description };
+  return pageMetadata({
+    locale: locale as Locale,
+    path: "/dmca",
+    title,
+    description,
+    imageAlt: getIntlayer("og-image", locale as Locale).alt,
+  });
 };
 
 export default function DmcaPage() {

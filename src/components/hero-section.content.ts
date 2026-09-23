@@ -4,8 +4,8 @@ const heroSectionContent = {
   key: "hero-section",
   content: {
     heading: t({
-      en: "Get the video or image out of any post",
-      uk: "Отримайте відео чи зображення з будь-якого поста",
+      en: "Share videos and images from X (Twitter) and Threads posts",
+      uk: "Діліться відео та зображеннями з постів X (Twitter) і Threads",
     }),
     subtext: t({
       en: "Paste a link, preview it instantly, and share the actual file straight into WhatsApp, Slack, or wherever you chat — no link-dropping required.",
