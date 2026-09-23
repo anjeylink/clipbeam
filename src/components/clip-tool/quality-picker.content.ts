@@ -7,6 +7,11 @@ const qualityPickerContent = {
       en: "Video quality",
       uk: "Якість відео",
     }),
+    // Shown when the Platform didn't report the video's dimensions.
+    original: t({
+      en: "Original",
+      uk: "Оригінал",
+    }),
     approxSize: insert(
       t({
         en: "~{{mb}} MB",

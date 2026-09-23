@@ -9,8 +9,8 @@ const metadataContent = {
       uk: "ClipBeam — Діліться відео та зображеннями напряму",
     }),
     description: t({
-      en: "Paste a post link, preview the video or image, and share it straight into WhatsApp, Slack, or any app — no link-dropping required.",
-      uk: "Вставте посилання на пост, перегляньте відео чи зображення та поділіться ним напряму у WhatsApp, Slack чи будь-якому іншому застосунку — без пересилання самого посилання.",
+      en: "Paste an X (Twitter) or Threads post link, preview the video or image, and share it straight into WhatsApp, Slack, or any app — no link-dropping required.",
+      uk: "Вставте посилання на пост X (Twitter) або Threads, перегляньте відео чи зображення та поділіться ним напряму у WhatsApp, Slack чи будь-якому іншому застосунку — без пересилання самого посилання.",
     }),
   },
 } satisfies Dictionary<Metadata>;

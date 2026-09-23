@@ -1,10 +1,28 @@
 const MAX_REDIRECT_HOPS = 5;
 const REDIRECT_TIMEOUT_MS = 5000;
 
-const ALLOWED_FINAL_HOSTS = new Set(["x.com", "twitter.com", "mobile.twitter.com"]);
+/**
+ * Which hosts mint a Platform's short/share links, and which hosts a
+ * resolved link is allowed to land on.
+ */
+export interface ShortLinkPolicy {
+  sourceHosts: ReadonlySet<string>;
+  finalHosts: ReadonlySet<string>;
+}
 
-// Rejects bare IPv4/IPv6 literals as redirect targets — a t.co link is
-// attacker-influenceable (anyone can get X to mint one pointing anywhere),
+export const X_SHORT_LINK_POLICY: ShortLinkPolicy = {
+  sourceHosts: new Set(["t.co"]),
+  finalHosts: new Set(["x.com", "twitter.com", "mobile.twitter.com"]),
+};
+
+// threads.com/share/<token> links 302 to the canonical /@user/post/<code>.
+export const THREADS_SHARE_LINK_POLICY: ShortLinkPolicy = {
+  sourceHosts: new Set(["www.threads.com", "threads.com", "www.threads.net", "threads.net"]),
+  finalHosts: new Set(["www.threads.com", "threads.com", "www.threads.net", "threads.net"]),
+};
+
+// Rejects bare IPv4/IPv6 literals as redirect targets — a short link is
+// attacker-influenceable (anyone can get X to mint a t.co pointing anywhere),
 // so a redirect landing directly on an IP literal (e.g. cloud metadata
 // addresses) is refused outright. This is a lightweight guard, not a
 // hardened DNS-rebinding-safe fetch.
@@ -23,11 +41,15 @@ export class ShortLinkResolutionError extends Error {
 }
 
 /**
- * Resolves a t.co short link to its final destination by manually following
- * redirects (rather than a bare `fetch(url, {redirect:"follow"})`), so each
- * hop can be validated before it's followed.
+ * Resolves a short/share link (t.co by default) to its final destination by
+ * manually following redirects (rather than a bare
+ * `fetch(url, {redirect:"follow"})`), so each hop can be validated before
+ * it's followed.
  */
-export async function resolveShortLink(url: string): Promise<string> {
+export async function resolveShortLink(
+  url: string,
+  policy: ShortLinkPolicy = X_SHORT_LINK_POLICY,
+): Promise<string> {
   let current: URL;
   try {
     current = new URL(url);
@@ -35,7 +57,7 @@ export async function resolveShortLink(url: string): Promise<string> {
     throw new ShortLinkResolutionError("malformed-url");
   }
 
-  if (current.hostname.toLowerCase() !== "t.co") {
+  if (!policy.sourceHosts.has(current.hostname.toLowerCase())) {
     throw new ShortLinkResolutionError("not-a-short-link");
   }
 
@@ -48,7 +70,7 @@ export async function resolveShortLink(url: string): Promise<string> {
 
     if (res.status < 300 || res.status >= 400) {
       // Not a redirect: this is the final resolved URL.
-      if (ALLOWED_FINAL_HOSTS.has(current.hostname.toLowerCase())) {
+      if (policy.finalHosts.has(current.hostname.toLowerCase())) {
         return current.toString();
       }
       throw new ShortLinkResolutionError("unresolved-host");

@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test";
 
+// Mirrors what /api/resolve returns (ParsedMedia): every media URL is
+// already routed through the /api/download proxy.
+function proxied(path: string): string {
+  return `/api/download?${new URLSearchParams({ url: path })}`;
+}
+
 const VIDEO_FIXTURE = {
+  platform: "x",
   postUrl: "https://x.com/someone/status/2",
   authorHandle: "someone",
   kind: "video",
@@ -10,25 +17,53 @@ const VIDEO_FIXTURE = {
       label: "1080p",
       width: 1920,
       height: 1080,
-      url: "/mock/sample-video-1080p.mp4",
+      proxiedUrl: proxied("/mock/sample-video-1080p.mp4"),
       approxSizeMb: 4.8,
     },
     {
       label: "720p",
       width: 1280,
       height: 720,
-      url: "/mock/sample-video-720p.mp4",
+      proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
       approxSizeMb: 2.6,
     },
     {
       label: "480p",
       width: 854,
       height: 480,
-      url: "/mock/sample-video-480p.mp4",
+      proxiedUrl: proxied("/mock/sample-video-480p.mp4"),
       approxSizeMb: 1.3,
     },
   ],
 };
+
+// A Threads embed gives no dimensions or poster: one unlabelled quality.
+const THREADS_VIDEO_FIXTURE = {
+  platform: "threads",
+  postUrl: "https://www.threads.com/@someone/post/ABC123",
+  authorHandle: "someone",
+  kind: "video",
+  qualities: [
+    {
+      label: null,
+      width: 0,
+      height: 0,
+      proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
+      approxSizeMb: 3.9,
+    },
+  ],
+};
+
+const THREADS_IMAGE_FIXTURE = {
+  platform: "threads",
+  postUrl: "https://www.threads.com/@someone/post/IMG456",
+  authorHandle: "someone",
+  kind: "image",
+  previewUrl: proxied("/mock/sample-image.jpg"),
+  proxiedUrl: proxied("/mock/sample-image.jpg"),
+};
+
+const POST_LINK_LABEL = /post link/i;
 
 test("pastes a video link, previews it, and links Download to the selected quality", async ({
   page,
@@ -40,13 +75,17 @@ test("pastes a video link, previews it, and links Download to the selected quali
   // user actually clicks Download (this browser has no Web Share file support,
   // so there's no reason to prefetch the file into memory).
   const downloadRequests: string[] = [];
+  // The <video> preview streams through the proxy too (resource type
+  // "media"); only a fetch() of the whole file would be a prefetch.
   page.on("request", (request) => {
-    if (request.url().includes("/api/download")) downloadRequests.push(request.url());
+    if (request.url().includes("/api/download") && request.resourceType() !== "media") {
+      downloadRequests.push(request.url());
+    }
   });
 
   await page.goto("/");
 
-  await page.getByLabel(/X \(Twitter\) post link/i).fill("https://x.com/someone/status/2");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /get media/i }).click();
 
   await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
@@ -92,13 +131,16 @@ test("on a Web Share-capable browser, prefetches the file for Share while Downlo
   let releaseBlob!: () => void;
   const blobGate = new Promise<void>((resolve) => (releaseBlob = resolve));
   await page.route("**/api/download*", async (route) => {
+    // Let the <video> preview's own requests through uncounted: only the
+    // Share blob prefetch is under test here.
+    if (route.request().resourceType() === "media") return route.abort();
     downloadRequests.push(route.request().url());
     await blobGate;
     await route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" });
   });
 
   await page.goto("/");
-  await page.getByLabel(/X \(Twitter\) post link/i).fill("https://x.com/someone/status/2");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /get media/i }).click();
 
   // While the blob is still in flight: Share is "Preparing…", Download is live.
@@ -114,16 +156,20 @@ test("on a Web Share-capable browser, prefetches the file for Share while Downlo
   await expect(page.getByRole("button", { name: /^share$/i })).toBeEnabled({ timeout: 5000 });
 });
 
-test("shows an inline error for a non-X url without blocking the input", async ({
+test("shows an inline error for an unsupported url without blocking the input", async ({
   page,
 }) => {
   await page.goto("/");
 
-  const input = page.getByLabel(/X \(Twitter\) post link/i);
+  const input = page.getByLabel(POST_LINK_LABEL);
   await input.fill("https://example.com/not-a-post");
   await page.getByRole("button", { name: /get media/i }).click();
 
-  await expect(page.getByText(/doesn't look like/i)).toBeVisible();
+  // Names both supported Platforms, with an example link for each.
+  await expect(
+    page.getByText(/doesn't look like an X \(Twitter\) or Threads post link/i),
+  ).toBeVisible();
+  await expect(page.getByText(/threads\.com\/@user\/post/i)).toBeVisible();
   await expect(input).toHaveValue("https://example.com/not-a-post");
 });
 
@@ -136,10 +182,121 @@ test("surfaces a server-reported error inline (e.g. a deleted or unsupported pos
 
   await page.goto("/");
 
-  await page.getByLabel(/X \(Twitter\) post link/i).fill("https://x.com/someone/status/3");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/3");
   await page.getByRole("button", { name: /get media/i }).click();
 
   await expect(page.getByText(/doesn't have an image or video/i)).toBeVisible({
     timeout: 5000,
   });
+});
+
+test('pastes a Threads video link: one "Original" quality, Download via the proxy', async ({
+  page,
+}) => {
+  const resolveRequests: string[] = [];
+  await page.route("**/api/resolve*", (route) => {
+    resolveRequests.push(route.request().url());
+    return route.fulfill({ json: THREADS_VIDEO_FIXTURE });
+  });
+
+  await page.goto("/");
+  await page
+    .getByLabel(POST_LINK_LABEL)
+    .fill("https://www.threads.com/@someone/post/ABC123?xmt=AQG0");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+    timeout: 5000,
+  });
+  expect(new URL(resolveRequests[0]).searchParams.get("url")).toBe(
+    "https://www.threads.com/@someone/post/ABC123?xmt=AQG0",
+  );
+  await expect(page.getByText("@someone")).toBeVisible();
+
+  const onlyQuality = page.getByRole("radio", { name: /original/i });
+  await expect(onlyQuality).toBeChecked();
+  await expect(page.getByRole("radio")).toHaveCount(1);
+
+  const href = await page.getByRole("link", { name: /^download$/i }).getAttribute("href");
+  const linked = new URL(href!, page.url());
+  expect(linked.pathname).toBe("/api/download");
+  expect(linked.searchParams.get("url")).toBe("/mock/sample-video-720p.mp4");
+  expect(linked.searchParams.get("filename")).toBe("clipbeam-someone-original");
+});
+
+test("pastes a Threads image link and previews it through the proxy", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) => route.fulfill({ json: THREADS_IMAGE_FIXTURE }));
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/t/IMG456");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  const image = page.getByRole("img", { name: /@someone/i });
+  await expect(image).toBeVisible({ timeout: 5000 });
+  expect(new URL((await image.getAttribute("src"))!, page.url()).pathname).toBe("/api/download");
+  await expect(page.getByRole("radiogroup", { name: /video quality/i })).toHaveCount(0);
+
+  const href = await page.getByRole("link", { name: /^download$/i }).getAttribute("href");
+  expect(new URL(href!, page.url()).searchParams.get("filename")).toBe("clipbeam-someone-image");
+});
+
+test("names Threads in a rate-limit error for a Threads link", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ status: 429, json: { code: "rate-limited" } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/ABC123");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByText(/^Threads is rate-limiting requests/i)).toBeVisible({
+    timeout: 5000,
+  });
+});
+
+test("names X in a rate-limit error for an X link", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ status: 429, json: { code: "rate-limited" } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/5");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByText(/^X is rate-limiting requests/i)).toBeVisible({
+    timeout: 5000,
+  });
+});
+
+test("rejects a Threads carousel with the multi-media message", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ status: 422, json: { code: "multi-media-unsupported" } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/CAR789");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByText(/multiple photos or videos aren't supported/i)).toBeVisible({
+    timeout: 5000,
+  });
+});
+
+test("accepts a Threads share link instead of rejecting it as invalid", async ({ page }) => {
+  const resolveRequests: string[] = [];
+  await page.route("**/api/resolve*", (route) => {
+    resolveRequests.push(route.request().url());
+    return route.fulfill({ json: THREADS_VIDEO_FIXTURE });
+  });
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/share/_ob4VZH8D/");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+    timeout: 5000,
+  });
+  expect(new URL(resolveRequests[0]).searchParams.get("url")).toBe(
+    "https://www.threads.com/share/_ob4VZH8D/",
+  );
 });

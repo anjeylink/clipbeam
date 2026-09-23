@@ -5,8 +5,8 @@ const featureBulletsContent = {
   content: {
     features: [
       t({
-        en: "Works with post links today — more sources coming later",
-        uk: "Уже працює з посиланнями на пости — інші джерела з'являться пізніше",
+        en: "Works with X (Twitter) and Threads post links",
+        uk: "Працює з посиланнями на пости X (Twitter) і Threads",
       }),
       t({
         en: "No account or login needed",

@@ -1,18 +1,6 @@
 import type { ResolvedMedia, ResolvedVideoQuality } from "@/lib/server/resolved-media";
-import type { ParseXUrlErrorCode } from "@/lib/parse-x-url";
-
-export class TweetResolutionError extends Error {
-  readonly code: Extract<
-    ParseXUrlErrorCode,
-    "unsupported-post" | "no-media" | "multi-media-unsupported" | "unsupported-media-host"
-  >;
-
-  constructor(code: TweetResolutionError["code"]) {
-    super(code);
-    this.name = "TweetResolutionError";
-    this.code = code;
-  }
-}
+import { MediaResolutionError } from "@/lib/server/media-resolution-error";
+import { labelForDimensions } from "@/lib/server/video-quality-label";
 
 interface SyndicationVideoVariant {
   content_type: string;
@@ -37,14 +25,6 @@ interface SyndicationTweet {
 }
 
 const RESOLUTION_PATTERN = /(\d+)x(\d+)/;
-
-// Labels by the short edge, not the literal "height" field — a portrait
-// (vertical) video's variant URL still encodes WxH as width<height (e.g.
-// 720x1280), and labeling that "1280p" reads wrong to users used to
-// 720p/480p/etc. referring to the shorter edge regardless of orientation.
-function labelForDimensions(width: number, height: number): string {
-  return `${Math.min(width, height)}p`;
-}
 
 function buildVideoQualities(detail: SyndicationMediaDetail): ResolvedVideoQuality[] {
   const durationMs = detail.video_info?.duration_millis ?? 0;
@@ -77,7 +57,7 @@ function buildVideoQualities(detail: SyndicationMediaDetail): ResolvedVideoQuali
 
 /**
  * Maps a raw JSON response from the syndication endpoint to our internal
- * ResolvedMedia shape. Pure/no I/O — throws TweetResolutionError for
+ * ResolvedMedia shape. Pure/no I/O — throws MediaResolutionError for
  * unavailable/tombstoned posts, posts with no media, or multi-photo posts
  * (out of scope for this pass). Animated GIFs are treated identically to
  * videos: X delivers them as an mp4 entry in video_info.variants, so they
@@ -87,26 +67,27 @@ export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMe
   const parsed = tweet as SyndicationTweet;
 
   if (parsed?.__typename === "TweetTombstone") {
-    throw new TweetResolutionError("unsupported-post");
+    throw new MediaResolutionError("unsupported-post");
   }
 
   const authorHandle = parsed?.user?.screen_name;
   if (!authorHandle) {
-    throw new TweetResolutionError("unsupported-post");
+    throw new MediaResolutionError("unsupported-post");
   }
 
   const mediaDetails = parsed.mediaDetails ?? [];
   if (mediaDetails.length === 0) {
-    throw new TweetResolutionError("no-media");
+    throw new MediaResolutionError("no-media");
   }
   if (mediaDetails.length > 1) {
-    throw new TweetResolutionError("multi-media-unsupported");
+    throw new MediaResolutionError("multi-media-unsupported");
   }
 
   const detail = mediaDetails[0];
 
   if (detail.type === "photo") {
     return {
+      platform: "x",
       postUrl,
       authorHandle,
       kind: "image",
@@ -118,10 +99,11 @@ export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMe
   // "video" and "animated_gif" both carry an mp4 in video_info.variants.
   const qualities = buildVideoQualities(detail);
   if (qualities.length === 0) {
-    throw new TweetResolutionError("no-media");
+    throw new MediaResolutionError("no-media");
   }
 
   return {
+    platform: "x",
     postUrl,
     authorHandle,
     kind: "video",

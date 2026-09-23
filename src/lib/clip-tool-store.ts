@@ -1,17 +1,18 @@
 import {
-  parseXUrl,
-  validateXUrl,
-  ParseXUrlError,
-  type ParsedXMedia,
-  type ParseXUrlErrorCode,
-} from "@/lib/parse-x-url";
+  parsePostUrl,
+  validatePostUrl,
+  ParsePostUrlError,
+  type ParsedMedia,
+  type ParsePostUrlErrorCode,
+  type Platform,
+} from "@/lib/parse-post-url";
 
 // "idle" = not requested yet: the blob only exists to feed the Web Share API
 // (which needs a File in hand), so it's fetched lazily via ensureBlob() rather
 // than for every loaded post. Plain downloads stream via /api/download instead.
 export type BlobStatus = "idle" | "loading" | "ready" | "error";
 
-export type ClipToolErrorCode = ParseXUrlErrorCode;
+export type ClipToolErrorCode = ParsePostUrlErrorCode;
 
 export type ClipToolState =
   | { status: "idle"; url: string }
@@ -20,12 +21,14 @@ export type ClipToolState =
   | {
       status: "loaded";
       url: string;
-      media: ParsedXMedia;
+      media: ParsedMedia;
       selectedQualityIndex: number;
       blob: Blob | null;
       blobStatus: BlobStatus;
     }
-  | { status: "error"; url: string; code: ClipToolErrorCode };
+  // platform is absent only when the link didn't match any Platform; error
+  // copy that names the Platform (e.g. rate-limiting) reads it from here.
+  | { status: "error"; url: string; code: ClipToolErrorCode; platform?: Platform };
 
 // Share-capable browsers prefetch the default-selected quality's blob (see
 // ensureBlob below) before the user has chosen anything — real posts can
@@ -36,7 +39,7 @@ export type ClipToolState =
 // smallest available if every variant exceeds that.
 const DEFAULT_QUALITY_MAX_SHORT_EDGE = 720;
 
-function defaultQualityIndex(media: ParsedXMedia): number {
+function defaultQualityIndex(media: ParsedMedia): number {
   if (media.kind !== "video" || media.qualities.length === 0) return 0;
   const index = media.qualities.findIndex(
     (q) => Math.min(q.width, q.height) <= DEFAULT_QUALITY_MAX_SHORT_EDGE,
@@ -45,7 +48,7 @@ function defaultQualityIndex(media: ParsedXMedia): number {
 }
 
 /** The already-proxied URL for the media (or the selected video quality). */
-function proxiedMediaUrl(media: ParsedXMedia, qualityIndex: number): string {
+function proxiedMediaUrl(media: ParsedMedia, qualityIndex: number): string {
   return media.kind === "video" ? media.qualities[qualityIndex].proxiedUrl : media.proxiedUrl;
 }
 
@@ -121,15 +124,16 @@ class ClipToolStore {
     this.setState({ status: "validating", url });
     syncUrlQueryParam(url);
 
-    const validation = validateXUrl(url);
+    const validation = validatePostUrl(url);
     if (!validation.valid) {
       this.setState({ status: "error", url, code: "invalid-format" });
       return;
     }
+    const { platform } = validation;
 
     const requestId = ++this.submitRequestId;
     this.setState({ status: "loading", url });
-    parseXUrl(url)
+    parsePostUrl(url)
       .then((media) => {
         if (this.submitRequestId !== requestId) return;
         this.blobCache.clear();
@@ -147,8 +151,8 @@ class ClipToolStore {
       .catch((err: unknown) => {
         if (this.submitRequestId !== requestId) return;
         const code: ClipToolErrorCode =
-          err instanceof ParseXUrlError ? err.code : "unknown";
-        this.setState({ status: "error", url, code });
+          err instanceof ParsePostUrlError ? err.code : "unknown";
+        this.setState({ status: "error", url, code, platform });
       });
   };
 
@@ -201,9 +205,9 @@ class ClipToolStore {
     const { media, selectedQualityIndex } = this.state;
     const requestId = ++this.blobRequestId;
     // Already proxied by toClientMedia server-side: video.twimg.com 403s
-    // browser-originated cross-origin requests, so every media URL the
-    // client holds is either hotlink-safe or already routed through
-    // /api/download — this store never has to know which.
+    // browser-originated cross-origin requests and Threads URLs expire, so
+    // every media URL the client holds is either hotlink-safe or already
+    // routed through /api/download — this store never has to know which.
     const sourceUrl = proxiedMediaUrl(media, selectedQualityIndex);
 
     fetch(sourceUrl, { signal: controller.signal })

@@ -7,13 +7,13 @@ import { cn } from "cn";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNativeShare } from "@/hooks/use-native-share";
-import type { ParsedXMedia } from "@/lib/parse-x-url";
+import type { ParsedMedia } from "@/lib/parse-post-url";
 import type { BlobStatus } from "@/hooks/use-clip-tool";
 import { appendDownloadFilename } from "@/lib/append-download-filename";
 import { extensionFromMimeType } from "@/lib/media-filename";
 
 interface ShareActionsProps {
-  media: ParsedXMedia;
+  media: ParsedMedia;
   selectedQualityIndex: number;
   blob: Blob | null;
   blobStatus: BlobStatus;
@@ -32,14 +32,15 @@ export function ShareActions({
   const content = useIntlayer("share-actions");
   const isVideo = media.kind === "video";
   const activeQuality = isVideo ? media.qualities[selectedQualityIndex] : null;
-  // The real blob's Content-Type (once fetched) is authoritative — X photos
+  // The real blob's Content-Type (once fetched) is authoritative — photos
   // can be PNG/WebP, not just JPEG — with a guessed fallback so the Share
   // feature-detection probe (see useNativeShare) has something to check
   // before the blob resolves.
   const guessedMimeType = isVideo ? "video/mp4" : "image/jpeg";
   const mimeType = blob?.type || guessedMimeType;
   const extension = extensionFromMimeType(mimeType);
-  const filenameBase = `clipbeam-${media.authorHandle}-${activeQuality?.label ?? "image"}`;
+  const qualitySlug = isVideo ? (activeQuality?.label ?? "original") : "image";
+  const filenameBase = `clipbeam-${media.authorHandle}-${qualitySlug}`;
   const filename = `${filenameBase}.${extension}`;
   // Download streams straight from our proxy as an attachment, so it starts
   // instantly and never waits on (or holds in memory) the blob below, which

@@ -145,4 +145,64 @@ describe("GET /api/download", () => {
     expect(res.status).toBe(502);
     expect((await res.json()).code).toBe("upstream-unreachable");
   });
+
+  it("follows a CDN redirect to another allowlisted Threads edge", async () => {
+    const fetchSpy = vi.fn(async (input: string | URL) => {
+      if (String(input).includes("fbcdn.net")) {
+        return {
+          ok: false,
+          status: 302,
+          body: null,
+          headers: new Headers({ location: "https://scontent.cdninstagram.com/o1/v/a.mp4" }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        body: new ReadableStream(),
+        headers: new Headers({ "content-type": "video/mp4" }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await GET(makeRequest("https://instagram.flwo3-1.fna.fbcdn.net/o1/v/a.mp4"));
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(String(fetchSpy.mock.calls[1][0])).toBe("https://scontent.cdninstagram.com/o1/v/a.mp4");
+    for (const [, init] of fetchSpy.mock.calls as unknown as [string, RequestInit][]) {
+      expect(init.redirect).toBe("manual");
+    }
+  });
+
+  it("refuses to follow a redirect off the allowlist", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: false,
+      status: 302,
+      body: null,
+      headers: new Headers({ location: "https://evil.example.com/a.mp4" }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await GET(makeRequest("https://scontent.cdninstagram.com/o1/v/a.mp4"));
+
+    expect(res.status).toBe(502);
+    expect((await res.json()).code).toBe("upstream-error");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after too many redirect hops", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: false,
+      status: 302,
+      body: null,
+      headers: new Headers({ location: "https://scontent.cdninstagram.com/loop.mp4" }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await GET(makeRequest("https://scontent.cdninstagram.com/loop.mp4"));
+
+    expect(res.status).toBe(502);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+  });
 });

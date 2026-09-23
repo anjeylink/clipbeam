@@ -22,7 +22,9 @@ No CI and no pre-commit hooks exist in this repo — nothing checks your work au
 
 ## Media URLs
 
-`toClientMedia` (`src/lib/server/to-client-media.ts`) is the only place that turns raw upstream CDN URLs into what the client receives — it enforces the same host allowlist `/api/download` uses, so a URL that would 403 later is rejected here first. Route new media through it rather than handing upstream URLs to the client directly. The one deliberate exception: an image's `previewUrl` stays raw (pbs.twimg.com allows hotlinking); everything else — `proxiedUrl`, all video qualities — is proxied.
+`toClientMedia` (`src/lib/server/to-client-media.ts`) is the only place that turns raw upstream CDN URLs into what the client receives — it enforces the same host allowlist `/api/download` uses (checked against the post's own Platform), so a URL that would 403 later is rejected here first. Route new media through it rather than handing upstream URLs to the client directly. The one deliberate exception: an X image's `previewUrl` and video `posterUrl` stay raw (pbs.twimg.com allows hotlinking); everything else — `proxiedUrl`, all video qualities, and every Threads URL (signed, expiring) — is proxied.
+
+The allowlist in `src/lib/server/media-proxy.ts` is per-Platform: exact hosts for X, dot-anchored suffixes (`.fbcdn.net`, `.cdninstagram.com`) for Threads, and `/api/download` re-checks every redirect hop against it (see `docs/adr/0002-per-platform-suffix-allowlist.md`). Never widen it to a substring match.
 
 ## TypeScript version
 

@@ -2,7 +2,7 @@ import { useId } from "react";
 import { useIntlayer } from "next-intlayer";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import type { VideoQualityOption } from "@/lib/parse-x-url";
+import type { VideoQualityOption } from "@/lib/parse-post-url";
 
 interface QualityPickerProps {
   qualities: VideoQualityOption[];
@@ -25,15 +25,17 @@ export function QualityPicker({ qualities, selectedIndex, onChange }: QualityPic
         className="grid grid-cols-1 gap-2 sm:grid-cols-3"
       >
         {qualities.map((quality, index) => {
-          const itemId = `quality-${quality.label}`;
+          const itemId = `${legendId}-quality-${index}`;
           return (
             <Label
-              key={quality.label}
+              key={itemId}
               htmlFor={itemId}
               className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg border border-input px-3 py-2.5 has-data-checked:border-primary has-data-checked:bg-primary/5"
             >
               <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">{quality.label}</span>
+                <span className="text-sm font-medium">
+                  {quality.label ?? content.original}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {content.approxSize({ mb: quality.approxSizeMb.toFixed(1) })}
                 </span>

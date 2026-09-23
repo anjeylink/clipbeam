@@ -1,5 +1,11 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { parseXUrl, validateXUrl, ParseXUrlError } from "./parse-x-url";
+import {
+  parsePostUrl,
+  threadsShortcode,
+  validatePostUrl,
+  validateXUrl,
+  ParsePostUrlError,
+} from "./parse-post-url";
 
 describe("validateXUrl", () => {
   it("accepts a well-formed x.com status link", () => {
@@ -65,7 +71,73 @@ describe("validateXUrl", () => {
   });
 });
 
-describe("parseXUrl", () => {
+describe("threadsShortcode", () => {
+  it("reads the shortcode from a threads.com /@user/post/ link", () => {
+    expect(threadsShortcode("https://www.threads.com/@zuck/post/DcwLClnmOrR")).toBe("DcwLClnmOrR");
+  });
+
+  it("accepts the legacy threads.net host, no www, and no scheme", () => {
+    expect(threadsShortcode("https://threads.net/@zuck/post/DcwLClnmOrR")).toBe("DcwLClnmOrR");
+    expect(threadsShortcode("threads.com/@zuck/post/DcwLClnmOrR")).toBe("DcwLClnmOrR");
+  });
+
+  it("accepts the handle-less /t/ form", () => {
+    expect(threadsShortcode("https://www.threads.com/t/Dcy_A8pGo-m")).toBe("Dcy_A8pGo-m");
+  });
+
+  it("accepts dotted usernames", () => {
+    expect(threadsShortcode("https://www.threads.com/@some.one_2/post/ABC-_1")).toBe("ABC-_1");
+  });
+
+  it("tolerates share-link query params, fragments, and a /media suffix", () => {
+    expect(threadsShortcode("https://www.threads.com/@zuck/post/DcwLClnmOrR?xmt=AQG0")).toBe(
+      "DcwLClnmOrR",
+    );
+    expect(threadsShortcode("https://www.threads.com/@zuck/post/DcwLClnmOrR/media")).toBe(
+      "DcwLClnmOrR",
+    );
+    expect(threadsShortcode("https://www.threads.com/@zuck/post/DcwLClnmOrR#x")).toBe(
+      "DcwLClnmOrR",
+    );
+  });
+
+  it("rejects a profile link and lookalike hosts", () => {
+    expect(threadsShortcode("https://www.threads.com/@zuck")).toBeNull();
+    expect(threadsShortcode("https://threads.com.evil.com/@zuck/post/ABC")).toBeNull();
+    expect(threadsShortcode("https://notthreads.com/@zuck/post/ABC")).toBeNull();
+  });
+});
+
+describe("validatePostUrl", () => {
+  it("detects X links, including t.co short links", () => {
+    const direct = validatePostUrl("https://x.com/someone/status/123");
+    expect(direct).toMatchObject({ valid: true, platform: "x", x: { statusId: "123" } });
+    expect(validatePostUrl("https://t.co/abc123")).toMatchObject({ valid: true, platform: "x" });
+  });
+
+  it("detects Threads links", () => {
+    expect(validatePostUrl("https://www.threads.com/t/Dcy_A8pGo-m")).toEqual({
+      valid: true,
+      platform: "threads",
+      format: "direct",
+      shortcode: "Dcy_A8pGo-m",
+    });
+  });
+
+  it("accepts a Threads share link as a plausible, unresolved format", () => {
+    const shareLink = { valid: true, platform: "threads", format: "share-link" };
+    expect(validatePostUrl("https://www.threads.com/share/_ob4VZH8D/")).toEqual(shareLink);
+    expect(validatePostUrl("threads.net/share/_ob4VZH8D")).toEqual(shareLink);
+    expect(validatePostUrl("https://www.threads.com/share/")).toEqual({ valid: false });
+    expect(validatePostUrl("https://threads.com.evil.com/share/abc")).toEqual({ valid: false });
+  });
+
+  it("rejects anything else", () => {
+    expect(validatePostUrl("https://example.com/not-a-post")).toEqual({ valid: false });
+  });
+});
+
+describe("parsePostUrl", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -85,12 +157,12 @@ describe("parseXUrl", () => {
       })),
     );
 
-    const media = await parseXUrl("https://x.com/someone/status/2");
+    const media = await parsePostUrl("https://x.com/someone/status/2");
     expect(media.kind).toBe("image");
     expect(media.authorHandle).toBe("someone");
   });
 
-  it("throws a ParseXUrlError with the response's error code on failure", async () => {
+  it("throws a ParsePostUrlError with the response's error code on failure", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -99,7 +171,7 @@ describe("parseXUrl", () => {
       })),
     );
 
-    await expect(parseXUrl("https://x.com/someone/status/3")).rejects.toMatchObject({
+    await expect(parsePostUrl("https://x.com/someone/status/3")).rejects.toMatchObject({
       code: "no-media",
     });
   });
@@ -115,10 +187,10 @@ describe("parseXUrl", () => {
       })),
     );
 
-    await expect(parseXUrl("https://x.com/someone/status/4")).rejects.toBeInstanceOf(
-      ParseXUrlError,
+    await expect(parsePostUrl("https://x.com/someone/status/4")).rejects.toBeInstanceOf(
+      ParsePostUrlError,
     );
-    await expect(parseXUrl("https://x.com/someone/status/4")).rejects.toMatchObject({
+    await expect(parsePostUrl("https://x.com/someone/status/4")).rejects.toMatchObject({
       code: "unknown",
     });
   });

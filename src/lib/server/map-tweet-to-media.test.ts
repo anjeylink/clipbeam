@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { mapTweetJsonToMedia, TweetResolutionError } from "./map-tweet-to-media";
+import { mapTweetJsonToMedia } from "./map-tweet-to-media";
+import { MediaResolutionError } from "./media-resolution-error";
 
 const POST_URL = "https://x.com/someone/status/123";
 
@@ -9,21 +10,21 @@ describe("mapTweetJsonToMedia", () => {
       __typename: "TweetTombstone",
       tombstone: { text: { text: "This Post is unavailable. Learn more" } },
     };
-    expect(() => mapTweetJsonToMedia(tombstone, POST_URL)).toThrow(TweetResolutionError);
+    expect(() => mapTweetJsonToMedia(tombstone, POST_URL)).toThrow(MediaResolutionError);
     try {
       mapTweetJsonToMedia(tombstone, POST_URL);
     } catch (err) {
-      expect((err as TweetResolutionError).code).toBe("unsupported-post");
+      expect((err as MediaResolutionError).code).toBe("unsupported-post");
     }
   });
 
   it("throws no-media for a text-only tweet (mediaDetails absent)", () => {
     const textOnly = { __typename: "Tweet", user: { screen_name: "jack" } };
-    expect(() => mapTweetJsonToMedia(textOnly, POST_URL)).toThrow(TweetResolutionError);
+    expect(() => mapTweetJsonToMedia(textOnly, POST_URL)).toThrow(MediaResolutionError);
     try {
       mapTweetJsonToMedia(textOnly, POST_URL);
     } catch (err) {
-      expect((err as TweetResolutionError).code).toBe("no-media");
+      expect((err as MediaResolutionError).code).toBe("no-media");
     }
   });
 
@@ -36,11 +37,11 @@ describe("mapTweetJsonToMedia", () => {
         { type: "photo", media_url_https: "https://pbs.twimg.com/b.jpg" },
       ],
     };
-    expect(() => mapTweetJsonToMedia(multiPhoto, POST_URL)).toThrow(TweetResolutionError);
+    expect(() => mapTweetJsonToMedia(multiPhoto, POST_URL)).toThrow(MediaResolutionError);
     try {
       mapTweetJsonToMedia(multiPhoto, POST_URL);
     } catch (err) {
-      expect((err as TweetResolutionError).code).toBe("multi-media-unsupported");
+      expect((err as MediaResolutionError).code).toBe("multi-media-unsupported");
     }
   });
 
@@ -52,6 +53,7 @@ describe("mapTweetJsonToMedia", () => {
     };
     const media = mapTweetJsonToMedia(photo, POST_URL);
     expect(media).toEqual({
+      platform: "x",
       postUrl: POST_URL,
       authorHandle: "someone",
       kind: "image",

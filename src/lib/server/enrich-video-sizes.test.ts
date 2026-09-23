@@ -4,6 +4,7 @@ import type { ResolvedMedia } from "@/lib/server/resolved-media";
 
 function videoMedia(qualities: ResolvedMedia["qualities"]): ResolvedMedia {
   return {
+    platform: "x",
     postUrl: "https://x.com/someone/status/123",
     authorHandle: "someone",
     kind: "video",
@@ -21,6 +22,7 @@ describe("enrichVideoQualitySizes", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const image: ResolvedMedia = {
+      platform: "x",
       postUrl: "https://x.com/someone/status/123",
       authorHandle: "someone",
       kind: "image",

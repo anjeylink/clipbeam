@@ -1,86 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateXUrl, type ParseXUrlErrorCode } from "@/lib/parse-x-url";
-import { computeSyndicationToken } from "@/lib/server/twitter-token";
-import { mapTweetJsonToMedia, TweetResolutionError } from "@/lib/server/map-tweet-to-media";
-import { resolveShortLink, ShortLinkResolutionError } from "@/lib/server/resolve-short-link";
+import { validatePostUrl, type ParsePostUrlErrorCode } from "@/lib/parse-post-url";
+import type { ResolvedMedia } from "@/lib/server/resolved-media";
+import { resolveXPost } from "@/lib/server/resolve-x-post";
+import { resolveThreadsPost } from "@/lib/server/resolve-threads-post";
+import { MediaResolutionError } from "@/lib/server/media-resolution-error";
 import { enrichVideoQualitySizes } from "@/lib/server/enrich-video-sizes";
 import { toClientMedia } from "@/lib/server/to-client-media";
 
-function errorResponse(code: ParseXUrlErrorCode, status: number) {
-  return NextResponse.json({ code }, { status });
+const STATUS_BY_CODE: Record<ParsePostUrlErrorCode, number> = {
+  "invalid-format": 400,
+  "not-found": 404,
+  "rate-limited": 429,
+  unknown: 502,
+  "unsupported-post": 422,
+  "no-media": 422,
+  "multi-media-unsupported": 422,
+  "unsupported-media-host": 422,
+};
+
+function errorResponse(code: ParsePostUrlErrorCode) {
+  return NextResponse.json({ code }, { status: STATUS_BY_CODE[code] });
 }
 
 export async function GET(request: NextRequest) {
   const rawUrl = request.nextUrl.searchParams.get("url");
   if (!rawUrl) {
-    return errorResponse("invalid-format", 400);
+    return errorResponse("invalid-format");
   }
 
-  const initialValidation = validateXUrl(rawUrl);
-  if (!initialValidation.valid) {
-    return errorResponse("invalid-format", 400);
+  const validation = validatePostUrl(rawUrl);
+  if (!validation.valid) {
+    return errorResponse("invalid-format");
   }
 
   console.log(`[resolve] ${rawUrl} ${new Date().toISOString()}`);
 
-  let resolvedUrl = rawUrl.trim();
-  let validation = initialValidation;
-
-  if (validation.format === "short-link") {
-    try {
-      resolvedUrl = await resolveShortLink(resolvedUrl);
-    } catch (err) {
-      if (err instanceof ShortLinkResolutionError) {
-        return errorResponse("invalid-format", 400);
-      }
-      return errorResponse("unknown", 502);
-    }
-    validation = validateXUrl(resolvedUrl);
-    if (!validation.valid || validation.format !== "direct" || !validation.statusId) {
-      return errorResponse("invalid-format", 400);
-    }
-  }
-
-  const statusId = validation.statusId;
-  if (!statusId) {
-    return errorResponse("invalid-format", 400);
-  }
-
-  const token = computeSyndicationToken(statusId);
-  const syndicationUrl = `https://cdn.syndication.twimg.com/tweet-result?id=${statusId}&token=${token}`;
-
-  let res: Response;
   try {
-    res = await fetch(syndicationUrl, { next: { revalidate: 300 } });
-  } catch {
-    return errorResponse("unknown", 502);
-  }
-
-  if (res.status === 404) {
-    return errorResponse("not-found", 404);
-  }
-  if (res.status === 429) {
-    return errorResponse("rate-limited", 429);
-  }
-  if (!res.ok) {
-    return errorResponse("unknown", 502);
-  }
-
-  let tweetJson: unknown;
-  try {
-    tweetJson = await res.json();
-  } catch {
-    return errorResponse("unknown", 502);
-  }
-
-  try {
-    const media = mapTweetJsonToMedia(tweetJson, resolvedUrl);
+    const media: ResolvedMedia =
+      validation.platform === "x"
+        ? await resolveXPost(rawUrl.trim(), validation.x)
+        : await resolveThreadsPost(rawUrl.trim(), validation);
     const enriched = await enrichVideoQualitySizes(media);
     return NextResponse.json(toClientMedia(enriched));
   } catch (err) {
-    if (err instanceof TweetResolutionError) {
-      return errorResponse(err.code, 422);
+    if (err instanceof MediaResolutionError) {
+      return errorResponse(err.code);
     }
-    return errorResponse("unknown", 500);
+    return errorResponse("unknown");
   }
 }

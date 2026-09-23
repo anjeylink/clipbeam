@@ -1,15 +1,60 @@
-// Twitter/X's CDN hosts we're willing to fetch server-side on a client's
-// behalf. Keeping this an exact-hostname allowlist (not a suffix/substring
-// check) is what keeps /api/download from becoming an open proxy for
-// arbitrary URLs.
-const ALLOWED_MEDIA_HOSTS = new Set(["video.twimg.com", "pbs.twimg.com"]);
+import type { Platform } from "@/lib/media-types";
 
-export function isProxyableMediaUrl(rawUrl: string): boolean {
+// CDN hosts we're willing to fetch server-side on a client's behalf, per
+// Platform (see docs/adr/0002-per-platform-suffix-allowlist.md). X's hosts
+// are fixed, so they stay an exact-hostname allowlist. Threads is served
+// from regional edges (instagram.<edge>.fna.fbcdn.net, scontent.cdninstagram.com,
+// …) whose names change, so it's matched by dot-anchored suffix — never a
+// bare substring check, which is what would turn /api/download into an
+// open proxy for arbitrary URLs.
+interface HostRule {
+  exact?: ReadonlySet<string>;
+  suffixes?: readonly string[];
+}
+
+const HOST_RULES: Record<Platform, HostRule> = {
+  x: { exact: new Set(["video.twimg.com", "pbs.twimg.com"]) },
+  threads: { suffixes: [".fbcdn.net", ".cdninstagram.com"] },
+};
+
+function hostMatches(hostname: string, rule: HostRule): boolean {
+  if (rule.exact?.has(hostname)) return true;
+  return rule.suffixes?.some((suffix) => hostname.endsWith(suffix)) ?? false;
+}
+
+/**
+ * True for an https URL on an allowlisted CDN host — of the given Platform
+ * or, when none is given (the proxy itself, which doesn't know where a URL
+ * came from), of any Platform.
+ */
+export function isProxyableMediaUrl(rawUrl: string, platform?: Platform): boolean {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
   } catch {
     return false;
   }
-  return parsed.protocol === "https:" && ALLOWED_MEDIA_HOSTS.has(parsed.hostname);
+  if (parsed.protocol !== "https:") return false;
+
+  const hostname = parsed.hostname.toLowerCase();
+  const rules = platform ? [HOST_RULES[platform]] : Object.values(HOST_RULES);
+  return rules.some((rule) => hostMatches(hostname, rule));
+}
+
+/**
+ * Where a CDN redirect from `currentUrl` points, if it's still proxyable —
+ * null otherwise. The proxy follows redirects itself (never `fetch`'s
+ * automatic following) so every hop is re-checked against the allowlist:
+ * an allowlisted host must not be able to bounce us to an arbitrary one.
+ */
+export function proxyableRedirectTarget(currentUrl: string, location: string | null): string | null {
+  if (!location) return null;
+  let next: URL;
+  try {
+    next = new URL(location, currentUrl);
+  } catch {
+    return null;
+  }
+  const href = next.toString();
+  return isProxyableMediaUrl(href) ? href : null;
 }

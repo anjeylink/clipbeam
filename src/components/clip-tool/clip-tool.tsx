@@ -5,11 +5,15 @@ import { useIntlayer } from "next-intlayer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClipTool } from "@/hooks/use-clip-tool";
 import { URL_QUERY_PARAM } from "@/lib/clip-tool-store";
+import type { Platform } from "@/lib/media-types";
 import { UrlInputForm } from "./url-input-form";
 import { MediaPreviewSkeleton } from "./media-preview-skeleton";
 import { MediaPreview } from "./media-preview";
 import { QualityPicker } from "./quality-picker";
 import { ShareActions } from "./share-actions";
+
+// Brand names, so not translated.
+const PLATFORM_NAMES: Record<Platform, string> = { x: "X", threads: "Threads" };
 
 export function ClipTool() {
   const content = useIntlayer("clip-tool");
@@ -39,8 +43,18 @@ export function ClipTool() {
   }, []);
 
   const isBusy = state.status === "validating" || state.status === "loading";
-  const errorMessage =
-    state.status === "error" ? String(content.errors[state.code]) : undefined;
+  let errorMessage: string | undefined;
+  if (state.status === "error") {
+    const { code, platform } = state;
+    errorMessage =
+      platform && code in content.platformErrors
+        ? String(
+            content.platformErrors[code as keyof typeof content.platformErrors]({
+              platform: PLATFORM_NAMES[platform],
+            }),
+          )
+        : String(content.errors[code]);
+  }
 
   return (
     <Card className="w-full max-w-3xl">

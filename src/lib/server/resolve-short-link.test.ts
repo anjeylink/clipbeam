@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveShortLink, ShortLinkResolutionError } from "./resolve-short-link";
+import {
+  resolveShortLink,
+  ShortLinkResolutionError,
+  THREADS_SHARE_LINK_POLICY,
+} from "./resolve-short-link";
 
 function mockRedirectChain(responses: Array<{ status: number; location?: string }>) {
   let call = 0;
@@ -108,5 +112,36 @@ describe("resolveShortLink", () => {
       }),
     );
     await expect(resolveShortLink("https://t.co/abc123")).rejects.toThrow();
+  });
+
+  describe("with the Threads share-link policy", () => {
+    it("follows a threads.com/share link to the canonical post URL", async () => {
+      vi.stubGlobal(
+        "fetch",
+        mockRedirectChain([
+          { status: 302, location: "https://www.threads.com/@someone/post/ABC123?xmt=x&slof=1" },
+          { status: 200 },
+        ]),
+      );
+      const resolved = await resolveShortLink(
+        "https://www.threads.com/share/_ob4VZH8D/",
+        THREADS_SHARE_LINK_POLICY,
+      );
+      expect(resolved).toBe("https://www.threads.com/@someone/post/ABC123?xmt=x&slof=1");
+    });
+
+    it("rejects a t.co link, and a share link that lands off Threads", async () => {
+      await expect(
+        resolveShortLink("https://t.co/abc123", THREADS_SHARE_LINK_POLICY),
+      ).rejects.toThrow(ShortLinkResolutionError);
+
+      vi.stubGlobal(
+        "fetch",
+        mockRedirectChain([{ status: 302, location: "https://evil.example.com/" }, { status: 200 }]),
+      );
+      await expect(
+        resolveShortLink("https://www.threads.com/share/abc/", THREADS_SHARE_LINK_POLICY),
+      ).rejects.toThrow(ShortLinkResolutionError);
+    });
   });
 });

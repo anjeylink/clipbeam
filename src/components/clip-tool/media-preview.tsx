@@ -1,10 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { ImageIcon, PlayCircle } from "lucide-react";
 import { useIntlayer } from "next-intlayer";
-import type { ParsedXMedia } from "@/lib/parse-x-url";
+import type { ParsedMedia } from "@/lib/parse-post-url";
 
 interface MediaPreviewProps {
-  media: ParsedXMedia;
+  media: ParsedMedia;
   selectedQualityIndex: number;
 }
 
@@ -21,6 +21,9 @@ export function MediaPreview({ media, selectedQualityIndex }: MediaPreviewProps)
             key={activeQuality?.proxiedUrl}
             controls
             poster={media.posterUrl}
+            // Without a poster (Threads embeds give none), metadata preload
+            // lets the browser paint the first frame instead of a black box.
+            preload="metadata"
             className="aspect-video w-full bg-black"
           >
             <source src={activeQuality?.proxiedUrl} />

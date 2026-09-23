@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isProxyableMediaUrl } from "@/lib/server/media-proxy";
+import { isProxyableMediaUrl, proxyableRedirectTarget } from "@/lib/server/media-proxy";
 import { extensionFromMimeType, sanitizeFilenameBase } from "@/lib/media-filename";
+
+const MAX_REDIRECT_HOPS = 3;
 
 // Twitter's CDN routinely 403s video.twimg.com requests made directly from
 // the browser (unlike pbs.twimg.com, which allows open hotlinking) — almost
@@ -13,18 +15,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: "invalid-url" }, { status: 400 });
   }
 
+  // Range is forwarded so <video> can seek (and Safari will play at all);
+  // the signal stops the upstream fetch when the browser drops a request.
+  const range = request.headers.get("range");
+  let upstreamUrl = mediaUrl;
   let upstream: Response;
-  try {
-    // Range is forwarded so <video> can seek (and Safari will play at all);
-    // the signal stops the upstream fetch when the browser drops a request.
-    const range = request.headers.get("range");
-    upstream = await fetch(mediaUrl, {
-      cache: "no-store",
-      headers: range ? { Range: range } : undefined,
-      signal: request.signal,
-    });
-  } catch {
-    return NextResponse.json({ code: "upstream-unreachable" }, { status: 502 });
+  for (let hop = 0; ; hop++) {
+    try {
+      upstream = await fetch(upstreamUrl, {
+        cache: "no-store",
+        headers: range ? { Range: range } : undefined,
+        redirect: "manual",
+        signal: request.signal,
+      });
+    } catch {
+      return NextResponse.json({ code: "upstream-unreachable" }, { status: 502 });
+    }
+
+    if (upstream.status < 300 || upstream.status >= 400) break;
+
+    // Threads' CDN can 302 between edges. Each hop is re-checked against
+    // the allowlist rather than trusting fetch's automatic following.
+    const next = proxyableRedirectTarget(upstreamUrl, upstream.headers.get("location"));
+    if (!next || hop >= MAX_REDIRECT_HOPS) {
+      return NextResponse.json({ code: "upstream-error" }, { status: 502 });
+    }
+    upstreamUrl = next;
   }
 
   if (!upstream.ok || !upstream.body) {
