@@ -4,17 +4,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "./route";
 
-function threadsFixture(name: string): string {
+function fixture(platform: "threads" | "instagram", name: string): string {
   return readFileSync(
-    join(__dirname, "../../../lib/server/__fixtures__/threads", `${name}.html`),
+    join(__dirname, "../../../lib/server/__fixtures__", platform, `${name}.html`),
     "utf8",
   );
 }
 
-// Answers Threads page fetches from fixtures and HEAD size probes with a
-// fixed Content-Length, recording which URLs were requested with which UA.
-function stubThreads(
-  pages: Record<string, { status?: number; html?: string; location?: string }>,
+const threadsFixture = (name: string) => fixture("threads", name);
+const instagramFixture = (name: string) => fixture("instagram", name);
+
+// Answers Threads/Instagram page fetches from fixtures and HEAD size probes
+// with a fixed Content-Length, recording which URLs were requested with
+// which UA. `finalUrl` stands in for where fetch's redirect-following ended.
+function stubPages(
+  pages: Record<
+    string,
+    { status?: number; html?: string; location?: string; finalUrl?: string }
+  >,
 ) {
   const calls: { url: string; userAgent?: string }[] = [];
   vi.stubGlobal(
@@ -31,7 +38,12 @@ function stubThreads(
       calls.push({ url, userAgent: new Headers(init?.headers).get("user-agent") ?? undefined });
       const page = pages[url] ?? { status: 404 };
       const status = page.status ?? 200;
-      return { ok: status < 400, status, text: async () => page.html ?? "" };
+      return {
+        ok: status < 400,
+        status,
+        url: page.finalUrl ?? url,
+        text: async () => page.html ?? "",
+      };
     }),
   );
   return calls;
@@ -188,7 +200,7 @@ describe("GET /api/resolve", () => {
     const PAGE = (code: string) => `https://www.threads.com/t/${code}`;
 
     it("resolves a video post from the embed alone, fully proxied", async () => {
-      const calls = stubThreads({ [EMBED("DcwLClnmOrR")]: { html: threadsFixture("embed-video") } });
+      const calls = stubPages({ [EMBED("DcwLClnmOrR")]: { html: threadsFixture("embed-video") } });
 
       const res = await GET(makeRequest("https://www.threads.com/@zuck/post/DcwLClnmOrR?xmt=AQG"));
       expect(res.status).toBe(200);
@@ -203,7 +215,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("takes the author from the page, not from a wrong @user in the link", async () => {
-      stubThreads({ [EMBED("Dcy_A8pGo-m")]: { html: threadsFixture("embed-image") } });
+      stubPages({ [EMBED("Dcy_A8pGo-m")]: { html: threadsFixture("embed-image") } });
 
       const res = await GET(makeRequest("https://www.threads.net/@someone.else/post/Dcy_A8pGo-m"));
       const body = await res.json();
@@ -212,7 +224,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("follows a threads.com/share link to the post before resolving it", async () => {
-      const calls = stubThreads({
+      const calls = stubPages({
         "https://www.threads.com/share/_ob4VZH8D/": {
           location: "https://www.threads.com/@zuck/post/DcwLClnmOrR?xmt=AQG0&slof=1",
         },
@@ -230,7 +242,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("maps a share link that doesn't redirect to a post to not-found", async () => {
-      stubThreads({});
+      stubPages({});
 
       const res = await GET(makeRequest("https://www.threads.com/share/zzzzzzzzz/"));
       expect(res.status).toBe(404);
@@ -238,7 +250,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("falls back to the crawler-UA post page when the embed has no media", async () => {
-      const calls = stubThreads({
+      const calls = stubPages({
         [EMBED("DdZ7sQvkTFn")]: { html: threadsFixture("embed-text") },
         [PAGE("DdZ7sQvkTFn")]: { html: threadsFixture("page-text") },
       });
@@ -251,7 +263,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("never returns a quoted post's video for a text post that quotes it", async () => {
-      stubThreads({
+      stubPages({
         [EMBED("DdHp9gDkmnV")]: { html: threadsFixture("embed-quote-of-video") },
         [PAGE("DdHp9gDkmnV")]: { html: threadsFixture("page-quote-of-video") },
       });
@@ -262,7 +274,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("rejects a carousel straight from the embed", async () => {
-      const calls = stubThreads({
+      const calls = stubPages({
         [EMBED("DZ7eGA1G7wU")]: { html: threadsFixture("embed-carousel") },
       });
 
@@ -273,7 +285,7 @@ describe("GET /api/resolve", () => {
     });
 
     it("maps an unavailable post to not-found without a fallback request", async () => {
-      const calls = stubThreads({ [EMBED("DzzzzzzzzzZ")]: { html: threadsFixture("embed-missing") } });
+      const calls = stubPages({ [EMBED("DzzzzzzzzzZ")]: { html: threadsFixture("embed-missing") } });
 
       const res = await GET(makeRequest("https://www.threads.com/t/DzzzzzzzzzZ"));
       expect(res.status).toBe(404);
@@ -282,9 +294,120 @@ describe("GET /api/resolve", () => {
     });
 
     it("maps a 403 from Threads to rate-limited", async () => {
-      stubThreads({ [EMBED("DcwLClnmOrR")]: { status: 403 } });
+      stubPages({ [EMBED("DcwLClnmOrR")]: { status: 403 } });
 
       const res = await GET(makeRequest("https://www.threads.com/t/DcwLClnmOrR"));
+      expect(res.status).toBe(429);
+      expect((await res.json()).code).toBe("rate-limited");
+    });
+  });
+
+  describe("Instagram", () => {
+    const EMBED = (code: string) => `https://www.instagram.com/p/${code}/embed/captioned/`;
+    const PAGE = (code: string) => `https://www.instagram.com/p/${code}/`;
+
+    it("resolves a Reel from the embed alone, labelled and fully proxied", async () => {
+      const calls = stubPages({ [EMBED("DdhFkS7KGkZ")]: { html: instagramFixture("embed-video") } });
+
+      const res = await GET(
+        makeRequest("https://www.instagram.com/reel/DdhFkS7KGkZ/?igsh=MWx0bGZ5"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toMatchObject({
+        platform: "instagram",
+        kind: "video",
+        authorHandle: "ravens",
+        postUrl: "https://www.instagram.com/p/DdhFkS7KGkZ/",
+      });
+      expect(body.qualities).toHaveLength(1);
+      expect(body.qualities[0].label).toBe("720p");
+      expect(body.qualities[0].approxSizeMb).toBeCloseTo(3.96, 2);
+      expect(body.qualities[0].proxiedUrl).toMatch(/^\/api\/download\?url=/);
+      expect(body.posterUrl).toMatch(/^\/api\/download\?url=/);
+      expect(calls.map((c) => c.url)).toEqual([EMBED("DdhFkS7KGkZ")]);
+      expect(calls[0].userAgent).toBe("ClipBeam/1.0");
+    });
+
+    it("resolves an image with a proxied preview, whatever username the link carries", async () => {
+      stubPages({ [EMBED("Ddbo7s0lzoy")]: { html: instagramFixture("embed-image") } });
+
+      const res = await GET(makeRequest("https://www.instagram.com/someone.else/p/Ddbo7s0lzoy/"));
+      const body = await res.json();
+      expect(body).toMatchObject({ platform: "instagram", kind: "image", authorHandle: "nasa" });
+      expect(body.previewUrl).toMatch(/^\/api\/download\?url=/);
+    });
+
+    it("follows an instagram.com/share link to the post before resolving it", async () => {
+      const calls = stubPages({
+        "https://www.instagram.com/share/reel/BAabc123/": {
+          location: "https://www.instagram.com/reel/DdhFkS7KGkZ/?igsh=MWx0",
+        },
+        [EMBED("DdhFkS7KGkZ")]: { html: instagramFixture("embed-video") },
+      });
+
+      const res = await GET(makeRequest("https://www.instagram.com/share/reel/BAabc123/"));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ platform: "instagram", kind: "video" });
+      expect(calls.map((c) => c.url)).toEqual([EMBED("DdhFkS7KGkZ")]);
+    });
+
+    it("maps a share link that doesn't redirect to a post to not-found", async () => {
+      stubPages({});
+
+      const res = await GET(makeRequest("https://www.instagram.com/share/zzzzzzzzz/"));
+      expect(res.status).toBe(404);
+      expect((await res.json()).code).toBe("not-found");
+    });
+
+    it("falls back to the crawler-UA post page when the embed is inconclusive", async () => {
+      const calls = stubPages({
+        [EMBED("DdhFkS7KGkZ")]: { html: "<html><body></body></html>" },
+        [PAGE("DdhFkS7KGkZ")]: { html: instagramFixture("page-video") },
+      });
+
+      const res = await GET(makeRequest("https://www.instagram.com/reel/DdhFkS7KGkZ/"));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ platform: "instagram", kind: "video" });
+      expect(calls.map((c) => c.url)).toEqual([EMBED("DdhFkS7KGkZ"), PAGE("DdhFkS7KGkZ")]);
+      expect(calls[1].userAgent).toMatch(/Googlebot/);
+    });
+
+    it("rejects a carousel straight from the embed", async () => {
+      const calls = stubPages({
+        [EMBED("DdZMsPElzSl")]: { html: instagramFixture("embed-carousel") },
+      });
+
+      const res = await GET(makeRequest("https://www.instagram.com/p/DdZMsPElzSl/"));
+      expect(res.status).toBe(422);
+      expect((await res.json()).code).toBe("multi-media-unsupported");
+      expect(calls).toHaveLength(1);
+    });
+
+    it("maps an unavailable post to not-found without a fallback request", async () => {
+      const calls = stubPages({
+        [EMBED("Zz0000000000")]: { html: instagramFixture("embed-missing") },
+      });
+
+      const res = await GET(makeRequest("https://www.instagram.com/p/Zz0000000000/"));
+      expect(res.status).toBe(404);
+      expect((await res.json()).code).toBe("not-found");
+      expect(calls).toHaveLength(1);
+    });
+
+    it("maps a 429, or a bounce to the login page, to rate-limited", async () => {
+      stubPages({ [EMBED("DdhFkS7KGkZ")]: { status: 429 } });
+      let res = await GET(makeRequest("https://www.instagram.com/reel/DdhFkS7KGkZ/"));
+      expect(res.status).toBe(429);
+      expect((await res.json()).code).toBe("rate-limited");
+
+      stubPages({
+        [EMBED("DdhFkS7KGkZ")]: {
+          html: "<html></html>",
+          finalUrl: "https://www.instagram.com/accounts/login/?next=%2Fp%2FDdhFkS7KGkZ%2F",
+        },
+      });
+      res = await GET(makeRequest("https://www.instagram.com/reel/DdhFkS7KGkZ/"));
       expect(res.status).toBe(429);
       expect((await res.json()).code).toBe("rate-limited");
     });

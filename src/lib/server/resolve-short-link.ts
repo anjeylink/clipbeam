@@ -21,6 +21,13 @@ export const THREADS_SHARE_LINK_POLICY: ShortLinkPolicy = {
   finalHosts: new Set(["www.threads.com", "threads.com", "www.threads.net", "threads.net"]),
 };
 
+// instagram.com/share/[reel/]<token> links redirect to the canonical
+// /reel/<code> or /p/<code>.
+export const INSTAGRAM_SHARE_LINK_POLICY: ShortLinkPolicy = {
+  sourceHosts: new Set(["www.instagram.com", "instagram.com", "m.instagram.com"]),
+  finalHosts: new Set(["www.instagram.com", "instagram.com", "m.instagram.com"]),
+};
+
 // Rejects bare IPv4/IPv6 literals as redirect targets — a short link is
 // attacker-influenceable (anyone can get X to mint a t.co pointing anywhere),
 // so a redirect landing directly on an IP literal (e.g. cloud metadata

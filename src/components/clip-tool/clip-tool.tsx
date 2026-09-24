@@ -14,7 +14,11 @@ import { QualityPicker } from "./quality-picker";
 import { ShareActions } from "./share-actions";
 
 // Brand names, so not translated.
-const PLATFORM_NAMES: Record<Platform, string> = { x: "X", threads: "Threads" };
+const PLATFORM_NAMES: Record<Platform, string> = {
+  x: "X",
+  instagram: "Instagram",
+  threads: "Threads",
+};
 
 // Feeds ?url= into the store — on mount (a reload, a shared link, or a
 // locale switch) and whenever it changes. Split out so only this

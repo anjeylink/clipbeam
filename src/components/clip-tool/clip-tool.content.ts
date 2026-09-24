@@ -17,8 +17,8 @@ const clipToolContent = {
     }),
     errors: {
       "invalid-format": t({
-        en: "That doesn't look like an X (Twitter) or Threads post link. Paste a URL like https://x.com/user/status/12345 or https://www.threads.com/@user/post/ABC123.",
-        uk: "Це не схоже на посилання на пост X (Twitter) або Threads. Вставте URL, наприклад https://x.com/user/status/12345 або https://www.threads.com/@user/post/ABC123.",
+        en: "That doesn't look like an Instagram, X (Twitter) or Threads post link. Paste a URL like https://www.instagram.com/p/ABC123, https://x.com/user/status/12345 or https://www.threads.com/@user/post/ABC123.",
+        uk: "Це не схоже на посилання на пост Instagram, X (Twitter) або Threads. Вставте URL, наприклад https://www.instagram.com/p/ABC123, https://x.com/user/status/12345 або https://www.threads.com/@user/post/ABC123.",
       }),
       "not-found": t({
         en: "That post couldn't be found. It may have been deleted or the link may be wrong.",
@@ -50,7 +50,7 @@ const clipToolContent = {
       }),
     },
     // Used instead of `errors` once the link's Platform is known, so the
-    // message names it ({{platform}} is a brand name: X or Threads).
+    // message names it ({{platform}} is a brand name: Instagram, X or Threads).
     platformErrors: {
       "not-found": insert(
         t({

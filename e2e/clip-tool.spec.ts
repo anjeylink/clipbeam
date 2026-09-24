@@ -63,6 +63,25 @@ const THREADS_IMAGE_FIXTURE = {
   proxiedUrl: proxied("/mock/sample-image.jpg"),
 };
 
+// An Instagram embed gives dimensions and a poster, so its one quality is
+// labelled; every URL (poster included) is proxied.
+const INSTAGRAM_VIDEO_FIXTURE = {
+  platform: "instagram",
+  postUrl: "https://www.instagram.com/p/REEL123/",
+  authorHandle: "someone",
+  kind: "video",
+  posterUrl: proxied("/mock/sample-video-poster.jpg"),
+  qualities: [
+    {
+      label: "720p",
+      width: 720,
+      height: 1280,
+      proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
+      approxSizeMb: 3.9,
+    },
+  ],
+};
+
 const POST_LINK_LABEL = /post link/i;
 
 test("pastes a video link, previews it, and links Download to the selected quality", async ({
@@ -225,11 +244,12 @@ test("shows an inline error for an unsupported url without blocking the input", 
   await input.fill("https://example.com/not-a-post");
   await page.getByRole("button", { name: /get media/i }).click();
 
-  // Names both supported Platforms, with an example link for each.
-  await expect(
-    page.getByText(/doesn't look like an X \(Twitter\) or Threads post link/i),
-  ).toBeVisible();
-  await expect(page.getByText(/threads\.com\/@user\/post/i)).toBeVisible();
+  // Names all three supported Platforms, with an example link for each.
+  const error = page.getByText(/doesn't look like an Instagram, X \(Twitter\) or Threads post link/i);
+  await expect(error).toBeVisible();
+  await expect(error).toContainText("instagram.com/p/");
+  await expect(error).toContainText("x.com/user/status/");
+  await expect(error).toContainText("threads.com/@user/post/");
   await expect(input).toHaveValue("https://example.com/not-a-post");
 });
 
@@ -359,6 +379,86 @@ test("accepts a Threads share link instead of rejecting it as invalid", async ({
   expect(new URL(resolveRequests[0]).searchParams.get("url")).toBe(
     "https://www.threads.com/share/_ob4VZH8D/",
   );
+});
+
+test("pastes an Instagram Reel link: one labelled quality, Download via the proxy", async ({
+  page,
+}) => {
+  const resolveRequests: string[] = [];
+  await page.route("**/api/resolve*", (route) => {
+    resolveRequests.push(route.request().url());
+    return route.fulfill({ json: INSTAGRAM_VIDEO_FIXTURE });
+  });
+
+  await page.goto("/");
+  await page
+    .getByLabel(POST_LINK_LABEL)
+    .fill("https://www.instagram.com/reel/REEL123/?igsh=MWx0bGZ5");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+    timeout: 5000,
+  });
+  expect(new URL(resolveRequests[0]).searchParams.get("url")).toBe(
+    "https://www.instagram.com/reel/REEL123/?igsh=MWx0bGZ5",
+  );
+  await expect(page.getByText("@someone")).toBeVisible();
+
+  await expect(page.getByRole("radio", { name: /720p/i })).toBeChecked();
+  await expect(page.getByRole("radio")).toHaveCount(1);
+
+  const href = await page.getByRole("link", { name: /^download$/i }).getAttribute("href");
+  const linked = new URL(href!, page.url());
+  expect(linked.pathname).toBe("/api/download");
+  expect(linked.searchParams.get("url")).toBe("/mock/sample-video-720p.mp4");
+  expect(linked.searchParams.get("filename")).toBe("clipbeam-someone-720p");
+});
+
+test("accepts an Instagram share link instead of rejecting it as invalid", async ({ page }) => {
+  const resolveRequests: string[] = [];
+  await page.route("**/api/resolve*", (route) => {
+    resolveRequests.push(route.request().url());
+    return route.fulfill({ json: INSTAGRAM_VIDEO_FIXTURE });
+  });
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/share/reel/BAabc123/");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
+    timeout: 5000,
+  });
+  expect(new URL(resolveRequests[0]).searchParams.get("url")).toBe(
+    "https://www.instagram.com/share/reel/BAabc123/",
+  );
+});
+
+test("names Instagram in a rate-limit error for an Instagram link", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ status: 429, json: { code: "rate-limited" } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/p/IMG456/");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByText(/^Instagram is rate-limiting requests/i)).toBeVisible({
+    timeout: 5000,
+  });
+});
+
+test("rejects an Instagram carousel with the multi-media message", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) =>
+    route.fulfill({ status: 422, json: { code: "multi-media-unsupported" } }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/p/CAR789/");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByText(/multiple photos or videos aren't supported/i)).toBeVisible({
+    timeout: 5000,
+  });
 });
 
 // ?url= is the source of truth for which post is shown.

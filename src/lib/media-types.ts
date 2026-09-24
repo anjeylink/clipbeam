@@ -1,4 +1,4 @@
-export type Platform = "x" | "threads";
+export type Platform = "x" | "instagram" | "threads";
 
 export type MediaKind = "image" | "video";
 
@@ -26,7 +26,8 @@ export type ParsedMedia =
       authorHandle: string;
       // Raw pbs.twimg.com URL for X, deliberately unproxied: pbs allows
       // hotlinking (unlike video.twimg.com), so <img src> skips our server
-      // round-trip. Proxied for Threads, whose URLs are signed and expire.
+      // round-trip. Proxied for Threads and Instagram, whose URLs are
+      // signed and expire.
       previewUrl: string;
       proxiedUrl: string;
     }

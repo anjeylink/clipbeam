@@ -14,8 +14,8 @@ const faqContent = {
           uk: "З якими посиланнями працює ClipBeam?",
         }),
         answer: t({
-          en: "Public post links from X (Twitter) — x.com, twitter.com, and t.co short links — and from Threads, including threads.com share links.",
-          uk: "З посиланнями на публічні пости X (Twitter) — x.com, twitter.com і короткими t.co — а також Threads, зокрема посиланнями «Поділитися» з threads.com.",
+          en: "Public post and Reel links from Instagram, including instagram.com share links; post links from X (Twitter) — x.com, twitter.com, and t.co short links; and post links from Threads, including threads.com share links.",
+          uk: "З посиланнями на публічні пости й Reels з Instagram, зокрема посиланнями «Поділитися» з instagram.com; на пости X (Twitter) — x.com, twitter.com і короткими t.co; а також на пости Threads, зокрема посиланнями «Поділитися» з threads.com.",
         }),
       },
       {
@@ -24,8 +24,8 @@ const faqContent = {
           uk: "Чи потрібен акаунт?",
         }),
         answer: t({
-          en: "No. ClipBeam has no sign-in, and it never asks for your X or Threads login.",
-          uk: "Ні. У ClipBeam немає входу, і він ніколи не запитує ваші дані для входу в X чи Threads.",
+          en: "No. ClipBeam has no sign-in, and it never asks for your Instagram, X or Threads login.",
+          uk: "Ні. У ClipBeam немає входу, і він ніколи не запитує ваші дані для входу в Instagram, X чи Threads.",
         }),
       },
       {
@@ -44,8 +44,8 @@ const faqContent = {
           uk: "Чи можна обрати якість відео?",
         }),
         answer: t({
-          en: "For X videos, pick any resolution the post offers, such as 1080p or 720p. Threads videos come in a single quality.",
-          uk: "Для відео з X оберіть будь-яку доступну в пості роздільну здатність, наприклад 1080p чи 720p. Відео з Threads доступні в одній якості.",
+          en: "For X videos, pick any resolution the post offers, such as 1080p or 720p. Instagram and Threads videos come in a single quality.",
+          uk: "Для відео з X оберіть будь-яку доступну в пості роздільну здатність, наприклад 1080p чи 720p. Відео з Instagram і Threads доступні в одній якості.",
         }),
       },
       {

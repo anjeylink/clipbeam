@@ -4,8 +4,8 @@ const urlInputFormContent = {
   key: "url-input-form",
   content: {
     label: t({
-      en: "X (Twitter) or Threads post link",
-      uk: "Посилання на пост X (Twitter) або Threads",
+      en: "Instagram, X (Twitter) or Threads post link",
+      uk: "Посилання на пост Instagram, X (Twitter) або Threads",
     }),
     placeholder: t({
       en: "Paste a post link here",

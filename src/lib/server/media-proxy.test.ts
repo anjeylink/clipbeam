@@ -50,6 +50,15 @@ describe("isProxyableMediaUrl", () => {
     expect(isProxyableMediaUrl("https://scontent.cdninstagram.com/a.jpg", "x")).toBe(false);
     expect(isProxyableMediaUrl("https://scontent.cdninstagram.com/a.jpg", "threads")).toBe(true);
   });
+
+  it("allows Meta's edges for Instagram, and nothing of X's", () => {
+    expect(
+      isProxyableMediaUrl("https://instagram.flwo3-1.fna.fbcdn.net/o1/v/a.mp4", "instagram"),
+    ).toBe(true);
+    expect(isProxyableMediaUrl("https://scontent.cdninstagram.com/a.jpg", "instagram")).toBe(true);
+    expect(isProxyableMediaUrl("https://video.twimg.com/a.mp4", "instagram")).toBe(false);
+    expect(isProxyableMediaUrl("https://evilcdninstagram.com/a.jpg", "instagram")).toBe(false);
+  });
 });
 
 describe("proxyableRedirectTarget", () => {

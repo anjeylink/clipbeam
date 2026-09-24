@@ -4,8 +4,8 @@ const ogImageContent = {
   key: "og-image",
   content: {
     alt: t({
-      en: "ClipBeam — share videos and images from X (Twitter) and Threads posts",
-      uk: "ClipBeam — діліться відео та зображеннями з постів X (Twitter) і Threads",
+      en: "ClipBeam — share videos and images from Instagram, X (Twitter) and Threads posts",
+      uk: "ClipBeam — діліться відео та зображеннями з постів Instagram, X (Twitter) і Threads",
     }),
     tagline: t({
       en: "Paste a post link. Share the actual file.",

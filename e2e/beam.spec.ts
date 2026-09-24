@@ -87,7 +87,7 @@ test("rejects a non-post link without calling the server", async ({ page, contex
   await page.getByLabel(POST_LINK_LABEL).fill("https://example.com/not-a-post");
   await page.getByRole("button", { name: /send to phone/i }).click();
 
-  await expect(page.getByText(/doesn't look like an x/i)).toBeVisible();
+  await expect(page.getByText(/doesn't look like an Instagram, X/i)).toBeVisible();
   expect(sendCalls).toBe(0);
 });
 

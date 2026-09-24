@@ -1,19 +1,19 @@
 # ClipBeam
 
-ClipBeam lets someone paste a Post link from X (Twitter) or Threads, preview its media, and download or share it.
+ClipBeam lets someone paste a Post link from X (Twitter), Instagram or Threads, preview its media, and download or share it.
 
 ## Language
 
 **Platform**:
-The social network a Post lives on — currently X or Threads. Detected from the pasted link's host; the user never picks it.
+The social network a Post lives on — currently X, Instagram or Threads. Detected from the pasted link's host; the user never picks it.
 _Avoid_: source, network, provider
 
 **Post**:
-A single public item on a Platform (an X tweet, a Threads post) that ClipBeam resolves to exactly one image or video. Posts with several media items are out of scope.
-_Avoid_: tweet (except when talking about X specifically), thread
+A single public item on a Platform (an X tweet, an Instagram post or Reel, a Threads post) that ClipBeam resolves to exactly one image or video. Posts with several media items (carousels) are out of scope. Instagram Stories and Highlights are not Posts.
+_Avoid_: tweet (except when talking about X specifically), thread, reel (as a separate concept — a Reel is just an Instagram Post whose media is a video)
 
 **ResolvedMedia**:
-The media extracted from a Post right after resolving the link, with its URLs exactly as the Platform's CDN gave them. Stays server-side only — some of those URLs will 403 (X video) or carry expiring signatures (Threads) if a browser requests them directly.
+The media extracted from a Post right after resolving the link, with its URLs exactly as the Platform's CDN gave them. Stays server-side only — some of those URLs will 403 (X video) or carry expiring signatures (Threads, Instagram) if a browser requests them directly.
 _Avoid_: raw media, upstream media
 
 **ParsedMedia**:

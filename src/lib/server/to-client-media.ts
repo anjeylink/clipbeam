@@ -5,8 +5,8 @@ import { mediaProxyUrl } from "@/lib/server/media-proxy-url";
 import { MediaResolutionError } from "@/lib/server/media-resolution-error";
 
 // X's pbs.twimg.com allows hotlinking, so X image previews and posters skip
-// our proxy. Threads URLs are signed, expire, and may redirect on a foreign
-// Referer, so everything from Threads is proxied.
+// our proxy. Instagram and Threads URLs are signed, expire, and may redirect
+// on a foreign Referer, so everything from them is proxied.
 function hotlinkOrProxy(media: ResolvedMedia, rawUrl: string): string {
   return media.platform === "x" ? rawUrl : mediaProxyUrl(rawUrl);
 }

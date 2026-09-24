@@ -1,5 +1,6 @@
 import type { ResolvedMedia } from "@/lib/server/resolved-media";
 import { MediaResolutionError } from "@/lib/server/media-resolution-error";
+import { decodeHtmlEntities } from "@/lib/server/html-entities";
 
 // The embed renders a reply's parent post(s) as plain "OuterContainer"
 // context blocks; the post that was actually requested is the last one
@@ -19,25 +20,6 @@ const CAROUSEL_MARKER = "MediaScrollContainer";
 const HANDLE_PATTERN = /class="HeaderLink"[^>]*>\s*<span>([^<]+)<\/span>/;
 const VIDEO_SOURCE_PATTERN = /<video\b[^>]*>\s*<source\b[^>]*\bsrc="([^"]+)"/g;
 const IMAGE_PATTERN = /<img\b[^>]*\bsrc="([^"]+)"/g;
-
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-};
-
-function decodeHtmlEntities(value: string): string {
-  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, body: string) => {
-    if (body[0] === "#") {
-      const codePoint =
-        body[1] === "x" || body[1] === "X" ? parseInt(body.slice(2), 16) : Number(body.slice(1));
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : entity;
-    }
-    return NAMED_ENTITIES[body.toLowerCase()] ?? entity;
-  });
-}
 
 export function threadsPostUrl(handle: string, shortcode: string): string {
   return `https://www.threads.com/@${handle}/post/${shortcode}`;

@@ -5,8 +5,8 @@ const featureBulletsContent = {
   content: {
     features: [
       t({
-        en: "Works with X (Twitter) and Threads post links",
-        uk: "Працює з посиланнями на пости X (Twitter) і Threads",
+        en: "Works with Instagram, X (Twitter) and Threads post links",
+        uk: "Працює з посиланнями на пости Instagram, X (Twitter) і Threads",
       }),
       t({
         en: "No account or login needed",

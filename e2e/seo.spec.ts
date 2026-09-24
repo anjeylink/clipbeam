@@ -96,6 +96,23 @@ test("link previews get a title and a locale's share image", async ({
   expect(response.headers()["content-type"]).toBe("image/png");
 });
 
+test("the home page names all three supported Platforms in both locales", async ({
+  page,
+}) => {
+  const PLATFORMS = /Instagram, X.*Threads/;
+  for (const path of ["/", "/uk"]) {
+    await page.goto(path);
+    await expect(page, path).toHaveTitle(PLATFORMS);
+    await expect(page.locator('head meta[name="description"]'), path).toHaveAttribute(
+      "content",
+      /Instagram, X \(Twitter\).*Threads/,
+    );
+    await expect(page.getByRole("heading", { level: 1 }), path).toHaveText(
+      /Instagram, X \(Twitter\).*Threads/,
+    );
+  }
+});
+
 test("the home page answers common questions, mirrored in structured data", async ({
   page,
 }) => {

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validatePostUrl, type ParsePostUrlErrorCode } from "@/lib/parse-post-url";
+import {
+  validatePostUrl,
+  type ParsePostUrlErrorCode,
+  type PostUrlValidation,
+} from "@/lib/parse-post-url";
 import type { ResolvedMedia } from "@/lib/server/resolved-media";
 import { resolveXPost } from "@/lib/server/resolve-x-post";
 import { resolveThreadsPost } from "@/lib/server/resolve-threads-post";
+import { resolveInstagramPost } from "@/lib/server/resolve-instagram-post";
 import { MediaResolutionError } from "@/lib/server/media-resolution-error";
 import { enrichVideoQualitySizes } from "@/lib/server/enrich-video-sizes";
 import { toClientMedia } from "@/lib/server/to-client-media";
@@ -22,6 +27,20 @@ function errorResponse(code: ParsePostUrlErrorCode) {
   return NextResponse.json({ code }, { status: STATUS_BY_CODE[code] });
 }
 
+function resolvePost(
+  url: string,
+  validation: Extract<PostUrlValidation, { valid: true }>,
+): Promise<ResolvedMedia> {
+  switch (validation.platform) {
+    case "x":
+      return resolveXPost(url, validation.x);
+    case "instagram":
+      return resolveInstagramPost(url, validation);
+    case "threads":
+      return resolveThreadsPost(url, validation);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const rawUrl = request.nextUrl.searchParams.get("url");
   if (!rawUrl) {
@@ -36,10 +55,7 @@ export async function GET(request: NextRequest) {
   console.log(`[resolve] ${rawUrl} ${new Date().toISOString()}`);
 
   try {
-    const media: ResolvedMedia =
-      validation.platform === "x"
-        ? await resolveXPost(rawUrl.trim(), validation.x)
-        : await resolveThreadsPost(rawUrl.trim(), validation);
+    const media = await resolvePost(rawUrl.trim(), validation);
     const enriched = await enrichVideoQualitySizes(media);
     return NextResponse.json(toClientMedia(enriched));
   } catch (err) {

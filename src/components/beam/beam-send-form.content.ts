@@ -4,8 +4,8 @@ const beamSendFormContent = {
   key: "beam-send-form",
   content: {
     label: t({
-      en: "X or Threads post link",
-      uk: "Посилання на пост X або Threads",
+      en: "Instagram, X or Threads post link",
+      uk: "Посилання на пост Instagram, X або Threads",
     }),
     placeholder: t({
       en: "https://x.com/user/status/…",
@@ -25,8 +25,8 @@ const beamSendFormContent = {
     }),
     errors: {
       invalidFormat: t({
-        en: "That doesn't look like an X (Twitter) or Threads post link.",
-        uk: "Це не схоже на посилання на пост X (Twitter) або Threads.",
+        en: "That doesn't look like an Instagram, X (Twitter) or Threads post link. Paste a URL like https://www.instagram.com/p/ABC123, https://x.com/user/status/12345 or https://www.threads.com/@user/post/ABC123.",
+        uk: "Це не схоже на посилання на пост Instagram, X (Twitter) або Threads. Вставте URL, наприклад https://www.instagram.com/p/ABC123, https://x.com/user/status/12345 або https://www.threads.com/@user/post/ABC123.",
       }),
       noDevice: t({
         en: "No phone is set up yet. Open Beam in the ClipBeam Home Screen app on your phone and turn on notifications.",

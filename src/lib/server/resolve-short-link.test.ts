@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  INSTAGRAM_SHARE_LINK_POLICY,
   resolveShortLink,
   ShortLinkResolutionError,
   THREADS_SHARE_LINK_POLICY,
@@ -141,6 +142,33 @@ describe("resolveShortLink", () => {
       );
       await expect(
         resolveShortLink("https://www.threads.com/share/abc/", THREADS_SHARE_LINK_POLICY),
+      ).rejects.toThrow(ShortLinkResolutionError);
+    });
+  });
+
+  describe("with the Instagram share-link policy", () => {
+    it("follows an instagram.com/share link to the canonical post URL", async () => {
+      vi.stubGlobal(
+        "fetch",
+        mockRedirectChain([
+          { status: 302, location: "https://www.instagram.com/reel/DdhFkS7KGkZ/?igsh=MWx0" },
+          { status: 200 },
+        ]),
+      );
+      const resolved = await resolveShortLink(
+        "https://www.instagram.com/share/reel/BAabc123/",
+        INSTAGRAM_SHARE_LINK_POLICY,
+      );
+      expect(resolved).toBe("https://www.instagram.com/reel/DdhFkS7KGkZ/?igsh=MWx0");
+    });
+
+    it("rejects a share link that lands off Instagram", async () => {
+      vi.stubGlobal(
+        "fetch",
+        mockRedirectChain([{ status: 302, location: "https://evil.example.com/" }, { status: 200 }]),
+      );
+      await expect(
+        resolveShortLink("https://www.instagram.com/share/abc/", INSTAGRAM_SHARE_LINK_POLICY),
       ).rejects.toThrow(ShortLinkResolutionError);
     });
   });

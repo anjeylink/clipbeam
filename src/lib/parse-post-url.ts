@@ -32,6 +32,22 @@ const THREADS_POST_URL_PATTERN =
 // redirect, so this only confirms the shape is plausible.
 const THREADS_SHARE_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?threads\.(?:com|net)\/share\/[\w-]+/i;
 
+// Matches instagram.com (www./m.) and instagr.am post links: /p/, /reel/,
+// /reels/ and /tv/, optionally behind a username segment (the app now
+// links "/<user>/reel/<code>"). The shortcode is all the server needs, and
+// the author is read from the fetched page. "share" is never a username
+// (share links are matched separately and carry a token, not a shortcode),
+// and "/reels/audio/<id>" is an audio page, not a Post. No trailing anchor,
+// so ?igsh=..., ?img_index=... and fragments are tolerated.
+const INSTAGRAM_POST_URL_PATTERN =
+  /^(?:https?:\/\/)?(?:(?:www\.|m\.)?instagram\.com|(?:www\.)?instagr\.am)\/(?:(?!share\/)[\w.]{1,30}\/)?(?:p|reels?|tv)\/(?!audio\/)([\w-]+)/i;
+
+// instagram.com/share/[p|reel/]<token> links (from the app's Share button)
+// carry no shortcode; like Threads' they can only be resolved by following
+// a server-side redirect, so this only confirms the shape is plausible.
+const INSTAGRAM_SHARE_URL_PATTERN =
+  /^(?:https?:\/\/)?(?:www\.|m\.)?instagram\.com\/share\/(?:(?:p|reels?|tv)\/)?[\w-]+/i;
+
 export type XUrlFormat = "direct" | "short-link" | "invalid";
 
 export interface XUrlValidation {
@@ -72,8 +88,15 @@ export function threadsShortcode(url: string): string | null {
   return url.trim().match(THREADS_POST_URL_PATTERN)?.[1] ?? null;
 }
 
+/** Format-only validation of an Instagram link; returns its shortcode, or null. */
+export function instagramShortcode(url: string): string | null {
+  return url.trim().match(INSTAGRAM_POST_URL_PATTERN)?.[1] ?? null;
+}
+
 export type PostUrlValidation =
   | { valid: true; platform: "x"; x: XUrlValidation }
+  | { valid: true; platform: "instagram"; format: "direct"; shortcode: string }
+  | { valid: true; platform: "instagram"; format: "share-link" }
   | { valid: true; platform: "threads"; format: "direct"; shortcode: string }
   | { valid: true; platform: "threads"; format: "share-link" }
   | { valid: false };
@@ -91,6 +114,15 @@ export function validatePostUrl(url: string): PostUrlValidation {
 
   if (THREADS_SHARE_URL_PATTERN.test(url.trim())) {
     return { valid: true, platform: "threads", format: "share-link" };
+  }
+
+  if (INSTAGRAM_SHARE_URL_PATTERN.test(url.trim())) {
+    return { valid: true, platform: "instagram", format: "share-link" };
+  }
+
+  const instagramCode = instagramShortcode(url);
+  if (instagramCode) {
+    return { valid: true, platform: "instagram", format: "direct", shortcode: instagramCode };
   }
 
   return { valid: false };
@@ -137,7 +169,7 @@ function isParsePostUrlErrorCode(value: unknown): value is ParsePostUrlErrorCode
 /**
  * Resolves a pasted post URL to its media via the /api/resolve Route
  * Handler, which does the actual extraction server-side (X's syndication
- * endpoint and Threads' pages both block or strip browser calls). Assumes
+ * endpoint and Threads' and Instagram's pages all block or strip browser calls). Assumes
  * the URL has already passed validatePostUrl.
  */
 export async function parsePostUrl(url: string): Promise<ParsedMedia> {
