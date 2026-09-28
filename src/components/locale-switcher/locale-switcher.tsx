@@ -1,11 +1,36 @@
 "use client";
 
 import { Suspense } from "react";
-import { getLocalizedUrl } from "intlayer";
+import {
+  getLocalizedUrl,
+  getPathWithoutLocale,
+  setLocaleInStorageClient,
+  type Locale,
+} from "intlayer";
 import { useLocale, useIntlayer } from "next-intlayer";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+
+// The proxy picks the page for an unprefixed URL ("/" in English) from the
+// locale cookie, so the cookie must say the new locale before the request goes
+// out. setLocale() writes it with the async cookieStore API, which can lose
+// that race; write it synchronously first.
+function writeLocaleCookie(locale: Locale) {
+  setLocaleInStorageClient(locale, {
+    setCookieStore: (name, value, { path, domain, expires, sameSite }) => {
+      document.cookie = [
+        `${name}=${encodeURIComponent(value)}`,
+        path && `path=${path}`,
+        domain && `domain=${domain}`,
+        expires !== undefined && `expires=${new Date(expires).toUTCString()}`,
+        sameSite && `samesite=${sameSite}`,
+      ]
+        .filter(Boolean)
+        .join("; ");
+    },
+  });
+}
 
 // `search` carries the current query string (e.g. the clip tool's ?url=)
 // across the switch, so the page's URL-held state survives it.
@@ -13,9 +38,12 @@ function LocaleLinks({ search }: { search: string }) {
   const content = useIntlayer("locale-switcher");
   // "none": the <Link> below navigates (with the query); next-intlayer's
   // default would router.replace() to the bare path and drop it.
-  const { locale, pathWithoutLocale, availableLocales, setLocale } = useLocale({
+  const { locale, availableLocales, setLocale } = useLocale({
     onChange: "none",
   });
+  // Not useLocale's pathWithoutLocale: once mounted, that one includes
+  // window.location.search, which `search` would then append a second time.
+  const pathWithoutLocale = getPathWithoutLocale(usePathname());
 
   return (
     <nav
@@ -28,8 +56,14 @@ function LocaleLinks({ search }: { search: string }) {
           <Link
             href={getLocalizedUrl(pathWithoutLocale, localeItem) + search}
             aria-current={locale === localeItem ? "page" : undefined}
-            onClick={() => setLocale(localeItem)}
+            onClick={() => {
+              writeLocaleCookie(localeItem);
+              setLocale(localeItem);
+            }}
             replace
+            // A prefetch goes out with the old cookie, and the proxy redirects
+            // it back to the current locale; clicking would then replay that.
+            prefetch={false}
             className={cn(
               "rounded px-1.5 py-0.5 uppercase transition-colors",
               locale === localeItem
