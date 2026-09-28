@@ -499,6 +499,41 @@ test.describe("?url= query param", () => {
     await expect(page.getByLabel(/посилання на пост/i)).toHaveValue(POST_URL);
   });
 
+  test.describe("for a Ukrainian-speaking visitor", () => {
+    test.use({ locale: "uk-UA" });
+
+    // "/" is English only once the locale cookie says so; until then the proxy
+    // redirects it to /uk. The switch must not reach "/" before the cookie does
+    // (a production prefetch or an async cookie write left the page on /uk,
+    // with only the client-rendered tool in English).
+    test("switches the whole page back to English", async ({ page }) => {
+      const resolveRequests: string[] = [];
+      await page.route("**/api/resolve*", (route) => {
+        resolveRequests.push(route.request().url());
+        return route.fulfill({ json: VIDEO_FIXTURE });
+      });
+
+      await page.goto(`/?${new URLSearchParams({ url: POST_URL })}`);
+      await expect(page).toHaveURL(/\/uk\?/);
+      await expect(page.getByRole("heading", { name: "Перегляд", exact: true })).toBeVisible({
+        timeout: 5000,
+      });
+
+      await page
+        .getByRole("navigation", { name: /мов/i })
+        .getByRole("link", { name: "en" })
+        .click();
+
+      await expect.poll(() => new URL(page.url()).pathname).toBe("/");
+      expect(new URL(page.url()).searchParams.get("url")).toBe(POST_URL);
+      await expect(
+        page.getByRole("heading", { name: "Frequently asked questions" }),
+      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible();
+      expect(resolveRequests).toHaveLength(1);
+    });
+  });
+
   test("a shared link loads the post without submitting", async ({ page }) => {
     await page.route("**/api/resolve*", (route) => route.fulfill({ json: VIDEO_FIXTURE }));
 
