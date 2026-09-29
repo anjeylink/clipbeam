@@ -6,7 +6,7 @@ import { GET } from "./route";
 
 function fixture(platform: "threads" | "instagram", name: string): string {
   return readFileSync(
-    join(__dirname, "../../../lib/server/__fixtures__", platform, `${name}.html`),
+    join(__dirname, "../../../../lib/server/__fixtures__", platform, `${name}.html`),
     "utf8",
   );
 }
@@ -50,7 +50,7 @@ function stubPages(
 }
 
 function makeRequest(url: string) {
-  return new NextRequest(`http://localhost/api/resolve?url=${encodeURIComponent(url)}`);
+  return new NextRequest(`http://localhost/explorer/api/resolve?url=${encodeURIComponent(url)}`);
 }
 
 describe("GET /api/resolve", () => {
@@ -100,7 +100,7 @@ describe("GET /api/resolve", () => {
     expect(body.authorHandle).toBe("someone");
     expect(body.qualities).toHaveLength(1);
     // Proxied, not the raw video.twimg.com URL: video hotlinking 403s.
-    expect(body.qualities[0].proxiedUrl).toMatch(/^\/api\/download\?url=/);
+    expect(body.qualities[0].proxiedUrl).toMatch(/^\/explorer\/api\/download\?url=/);
     expect(body.qualities[0].url).toBeUndefined();
   });
 
@@ -124,7 +124,7 @@ describe("GET /api/resolve", () => {
     expect(body.kind).toBe("image");
     // pbs.twimg.com allows hotlinking, so the preview skips our proxy.
     expect(body.previewUrl).toBe("https://pbs.twimg.com/a.jpg");
-    expect(body.proxiedUrl).toMatch(/^\/api\/download\?url=/);
+    expect(body.proxiedUrl).toMatch(/^\/explorer\/api\/download\?url=/);
   });
 
   it("rejects media on a host outside the proxy allowlist", async () => {
@@ -209,7 +209,7 @@ describe("GET /api/resolve", () => {
       expect(body.qualities).toHaveLength(1);
       expect(body.qualities[0].label).toBeNull();
       expect(body.qualities[0].approxSizeMb).toBeCloseTo(3.96, 2);
-      expect(body.qualities[0].proxiedUrl).toMatch(/^\/api\/download\?url=/);
+      expect(body.qualities[0].proxiedUrl).toMatch(/^\/explorer\/api\/download\?url=/);
       expect(calls.map((c) => c.url)).toEqual([EMBED("DcwLClnmOrR")]);
       expect(calls[0].userAgent).toBe("ClipBeam/1.0");
     });
@@ -220,7 +220,7 @@ describe("GET /api/resolve", () => {
       const res = await GET(makeRequest("https://www.threads.net/@someone.else/post/Dcy_A8pGo-m"));
       const body = await res.json();
       expect(body).toMatchObject({ platform: "threads", kind: "image", authorHandle: "zuck" });
-      expect(body.previewUrl).toMatch(/^\/api\/download\?url=/);
+      expect(body.previewUrl).toMatch(/^\/explorer\/api\/download\?url=/);
     });
 
     it("follows a threads.com/share link to the post before resolving it", async () => {
@@ -323,8 +323,8 @@ describe("GET /api/resolve", () => {
       expect(body.qualities).toHaveLength(1);
       expect(body.qualities[0].label).toBe("720p");
       expect(body.qualities[0].approxSizeMb).toBeCloseTo(3.96, 2);
-      expect(body.qualities[0].proxiedUrl).toMatch(/^\/api\/download\?url=/);
-      expect(body.posterUrl).toMatch(/^\/api\/download\?url=/);
+      expect(body.qualities[0].proxiedUrl).toMatch(/^\/explorer\/api\/download\?url=/);
+      expect(body.posterUrl).toMatch(/^\/explorer\/api\/download\?url=/);
       expect(calls.map((c) => c.url)).toEqual([EMBED("DdhFkS7KGkZ")]);
       expect(calls[0].userAgent).toBe("ClipBeam/1.0");
     });
@@ -335,7 +335,7 @@ describe("GET /api/resolve", () => {
       const res = await GET(makeRequest("https://www.instagram.com/someone.else/p/Ddbo7s0lzoy/"));
       const body = await res.json();
       expect(body).toMatchObject({ platform: "instagram", kind: "image", authorHandle: "nasa" });
-      expect(body.previewUrl).toMatch(/^\/api\/download\?url=/);
+      expect(body.previewUrl).toMatch(/^\/explorer\/api\/download\?url=/);
     });
 
     it("follows an instagram.com/share link to the post before resolving it", async () => {

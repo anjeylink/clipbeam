@@ -2,6 +2,7 @@ import webpush, { WebPushError } from "web-push";
 import { getIntlayer, getLocalizedUrl } from "intlayer";
 import { URL_QUERY_PARAM } from "@/lib/clip-tool-store";
 import { listSubscriptions, removeSubscription } from "./beam-store";
+import { appPath } from "@/lib/app-path";
 
 export interface BeamPayload {
   title: string;
@@ -40,7 +41,7 @@ export async function sendBeam(postUrl: string): Promise<number> {
       const payload: BeamPayload = {
         title: getIntlayer("beam-notification", locale).title,
         body: postUrl,
-        url: `${getLocalizedUrl("/", locale)}?${query}`,
+        url: `${getLocalizedUrl(appPath("/"), locale)}?${query}`,
       };
 
       try {

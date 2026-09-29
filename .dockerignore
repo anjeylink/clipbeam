@@ -1,0 +1,31 @@
+# Rebuilt inside the image
+node_modules
+.next
+.intlayer
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets — pass runtime values as container env vars instead
+.env*
+*.pem
+.vercel
+
+# Tests and reports
+e2e
+test-results
+playwright-report
+blob-report
+playwright
+coverage
+
+# Tooling, docs, VCS
+.git
+.gitignore
+.idea
+.agents
+.claude
+.scratch
+docs
+*.md
+Dockerfile
+.dockerignore

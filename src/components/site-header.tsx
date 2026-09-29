@@ -3,6 +3,7 @@ import { Zap } from "lucide-react";
 import { useLocale } from "next-intlayer";
 import Link from "next/link";
 import { LocaleSwitcher } from "@/components/locale-switcher/locale-switcher";
+import { appPath } from "@/lib/app-path";
 
 export function SiteHeader() {
   const { locale } = useLocale();
@@ -11,7 +12,7 @@ export function SiteHeader() {
     <header className="w-full border-b border-border">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-4">
         <Link
-          href={getLocalizedUrl("/", locale)}
+          href={getLocalizedUrl(appPath("/"), locale)}
           className="flex items-center gap-2"
         >
           <Zap className="size-5 text-primary" aria-hidden="true" />

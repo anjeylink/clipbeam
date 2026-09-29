@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { validatePostUrl } from "@/lib/parse-post-url";
+import { appPath } from "@/lib/app-path";
 
 type SendStatus = "idle" | "sending" | "sent" | "invalid-format" | "no-device" | "failed";
 
@@ -25,7 +26,7 @@ export function BeamSendForm() {
     }
     setStatus("sending");
     try {
-      const res = await fetch("/api/beam/send", {
+      const res = await fetch(appPath("/api/beam/send"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: value }),

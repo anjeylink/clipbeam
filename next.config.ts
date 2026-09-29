@@ -2,7 +2,12 @@ import type { NextConfig } from "next";
 import { withIntlayer } from "next-intlayer/server";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Self-contained server in .next/standalone for the Docker image; Vercel
+  // ignores it.
+  output: "standalone",
+  // Assets load from /explorer/_next so they sit under the one path the
+  // front proxy routes to this app (pages live under [locale]/explorer).
+  assetPrefix: "/explorer",
   reactCompiler: true,
   allowedDevOrigins: ["ubuntu"],
   async headers() {

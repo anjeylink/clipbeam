@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 // Mirrors what /api/resolve returns (ParsedMedia): every media URL is
 // already routed through the /api/download proxy.
 function proxied(path: string): string {
-  return `/api/download?${new URLSearchParams({ url: path })}`;
+  return `/explorer/api/download?${new URLSearchParams({ url: path })}`;
 }
 
 const VIDEO_FIXTURE = {
@@ -102,7 +102,7 @@ test("pastes a video link, previews it, and links Download to the selected quali
     }
   });
 
-  await page.goto("/");
+  await page.goto("/explorer");
 
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /get media/i }).click();
@@ -124,7 +124,7 @@ test("pastes a video link, previews it, and links Download to the selected quali
   await expect(downloadLink).toBeVisible();
   const href = await downloadLink.getAttribute("href");
   const linked = new URL(href!, page.url());
-  expect(linked.pathname).toBe("/api/download");
+  expect(linked.pathname).toBe("/explorer/api/download");
   expect(linked.searchParams.get("url")).toBe("/mock/sample-video-480p.mp4");
   expect(linked.searchParams.get("filename")).toBe("clipbeam-someone-480p");
   await expect(downloadLink).toHaveAttribute("target", "_blank");
@@ -158,7 +158,7 @@ test("on a Web Share-capable browser, prefetches the file for Share while Downlo
     await route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" });
   });
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -194,7 +194,7 @@ test("Share hands the OS share sheet only the media file, no title or text", asy
       : route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -224,7 +224,7 @@ test("on a phone, stacked Share and Download keep their full tap height", async 
       : route.fulfill({ headers: { "content-type": "video/mp4" }, body: "fake-video-bytes" }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -238,7 +238,7 @@ test("on a phone, stacked Share and Download keep their full tap height", async 
 test("shows an inline error for an unsupported url without blocking the input", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/explorer");
 
   const input = page.getByLabel(POST_LINK_LABEL);
   await input.fill("https://example.com/not-a-post");
@@ -260,7 +260,7 @@ test("surfaces a server-reported error inline (e.g. a deleted or unsupported pos
     route.fulfill({ status: 422, json: { code: "no-media" } }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
 
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/3");
   await page.getByRole("button", { name: /get media/i }).click();
@@ -279,7 +279,7 @@ test('pastes a Threads video link: one "Original" quality, Download via the prox
     return route.fulfill({ json: THREADS_VIDEO_FIXTURE });
   });
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page
     .getByLabel(POST_LINK_LABEL)
     .fill("https://www.threads.com/@someone/post/ABC123?xmt=AQG0");
@@ -299,7 +299,7 @@ test('pastes a Threads video link: one "Original" quality, Download via the prox
 
   const href = await page.getByRole("link", { name: /^download$/i }).getAttribute("href");
   const linked = new URL(href!, page.url());
-  expect(linked.pathname).toBe("/api/download");
+  expect(linked.pathname).toBe("/explorer/api/download");
   expect(linked.searchParams.get("url")).toBe("/mock/sample-video-720p.mp4");
   expect(linked.searchParams.get("filename")).toBe("clipbeam-someone-original");
 });
@@ -307,13 +307,13 @@ test('pastes a Threads video link: one "Original" quality, Download via the prox
 test("pastes a Threads image link and previews it through the proxy", async ({ page }) => {
   await page.route("**/api/resolve*", (route) => route.fulfill({ json: THREADS_IMAGE_FIXTURE }));
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/t/IMG456");
   await page.getByRole("button", { name: /get media/i }).click();
 
   const image = page.getByRole("img", { name: /@someone/i });
   await expect(image).toBeVisible({ timeout: 5000 });
-  expect(new URL((await image.getAttribute("src"))!, page.url()).pathname).toBe("/api/download");
+  expect(new URL((await image.getAttribute("src"))!, page.url()).pathname).toBe("/explorer/api/download");
   await expect(page.getByRole("radiogroup", { name: /video quality/i })).toHaveCount(0);
 
   const href = await page.getByRole("link", { name: /^download$/i }).getAttribute("href");
@@ -325,7 +325,7 @@ test("names Threads in a rate-limit error for a Threads link", async ({ page }) 
     route.fulfill({ status: 429, json: { code: "rate-limited" } }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/ABC123");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -339,7 +339,7 @@ test("names X in a rate-limit error for an X link", async ({ page }) => {
     route.fulfill({ status: 429, json: { code: "rate-limited" } }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/5");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -353,7 +353,7 @@ test("rejects a Threads carousel with the multi-media message", async ({ page })
     route.fulfill({ status: 422, json: { code: "multi-media-unsupported" } }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/CAR789");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -369,7 +369,7 @@ test("accepts a Threads share link instead of rejecting it as invalid", async ({
     return route.fulfill({ json: THREADS_VIDEO_FIXTURE });
   });
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/share/_ob4VZH8D/");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -390,7 +390,7 @@ test("pastes an Instagram Reel link: one labelled quality, Download via the prox
     return route.fulfill({ json: INSTAGRAM_VIDEO_FIXTURE });
   });
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page
     .getByLabel(POST_LINK_LABEL)
     .fill("https://www.instagram.com/reel/REEL123/?igsh=MWx0bGZ5");
@@ -409,7 +409,7 @@ test("pastes an Instagram Reel link: one labelled quality, Download via the prox
 
   const href = await page.getByRole("link", { name: /^download$/i }).getAttribute("href");
   const linked = new URL(href!, page.url());
-  expect(linked.pathname).toBe("/api/download");
+  expect(linked.pathname).toBe("/explorer/api/download");
   expect(linked.searchParams.get("url")).toBe("/mock/sample-video-720p.mp4");
   expect(linked.searchParams.get("filename")).toBe("clipbeam-someone-720p");
 });
@@ -421,7 +421,7 @@ test("accepts an Instagram share link instead of rejecting it as invalid", async
     return route.fulfill({ json: INSTAGRAM_VIDEO_FIXTURE });
   });
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/share/reel/BAabc123/");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -438,7 +438,7 @@ test("names Instagram in a rate-limit error for an Instagram link", async ({ pag
     route.fulfill({ status: 429, json: { code: "rate-limited" } }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/p/IMG456/");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -452,7 +452,7 @@ test("rejects an Instagram carousel with the multi-media message", async ({ page
     route.fulfill({ status: 422, json: { code: "multi-media-unsupported" } }),
   );
 
-  await page.goto("/");
+  await page.goto("/explorer");
   await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/p/CAR789/");
   await page.getByRole("button", { name: /get media/i }).click();
 
@@ -474,7 +474,7 @@ test.describe("?url= query param", () => {
       return route.fulfill({ json: VIDEO_FIXTURE });
     });
 
-    await page.goto("/");
+    await page.goto("/explorer");
     await page.getByLabel(POST_LINK_LABEL).fill(POST_URL);
     await page.getByRole("button", { name: /get media/i }).click();
     await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
@@ -487,7 +487,7 @@ test.describe("?url= query param", () => {
       .getByRole("link", { name: "uk" })
       .click();
 
-    await expect(page).toHaveURL(/\/uk(\?|$)/);
+    await expect(page).toHaveURL(/\/uk\/explorer(\?|$)/);
     expect(new URL(page.url()).searchParams.get("url")).toBe(POST_URL);
     await expect(page.getByRole("heading", { name: "Перегляд", exact: true })).toBeVisible();
     expect(resolveRequests).toHaveLength(1);
@@ -502,7 +502,7 @@ test.describe("?url= query param", () => {
   test("a shared link loads the post without submitting", async ({ page }) => {
     await page.route("**/api/resolve*", (route) => route.fulfill({ json: VIDEO_FIXTURE }));
 
-    await page.goto(`/?${new URLSearchParams({ url: POST_URL })}`);
+    await page.goto(`/explorer?${new URLSearchParams({ url: POST_URL })}`);
 
     await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({
       timeout: 5000,
@@ -513,7 +513,7 @@ test.describe("?url= query param", () => {
   test("navigating home via the logo resets the tool", async ({ page }) => {
     await page.route("**/api/resolve*", (route) => route.fulfill({ json: VIDEO_FIXTURE }));
 
-    await page.goto("/");
+    await page.goto("/explorer");
     await page.getByLabel(POST_LINK_LABEL).fill(POST_URL);
     await page.getByRole("button", { name: /get media/i }).click();
     await expect(page.getByRole("heading", { name: "Preview", exact: true })).toBeVisible({

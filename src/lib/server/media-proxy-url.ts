@@ -1,3 +1,5 @@
+import { appPath } from "@/lib/app-path";
+
 /**
  * Same-origin URL for a twimg media file, served through /api/download.
  * video.twimg.com 403s requests that carry a browser Referer/Origin, so
@@ -10,5 +12,5 @@
 export function mediaProxyUrl(rawUrl: string, filename?: string): string {
   const params = new URLSearchParams({ url: rawUrl });
   if (filename !== undefined) params.set("filename", filename);
-  return `/api/download?${params}`;
+  return appPath(`/api/download?${params}`);
 }

@@ -21,7 +21,7 @@ const POST_LINK_LABEL = /post link/i;
 test("an unpaired visitor sees only the key form, and a wrong key is rejected", async ({
   page,
 }) => {
-  await page.goto("/beam");
+  await page.goto("/explorer/beam");
 
   await expect(page.getByRole("heading", { name: "Beam", level: 1 })).toBeVisible();
   await expect(page.getByLabel(POST_LINK_LABEL)).toHaveCount(0);
@@ -33,7 +33,7 @@ test("an unpaired visitor sees only the key form, and a wrong key is rejected", 
 });
 
 test("the right key pairs the device and unlocks the send form", async ({ page, context }) => {
-  await page.goto("/beam");
+  await page.goto("/explorer/beam");
   await page.getByLabel(/beam key/i).fill(BEAM_SECRET);
   await page.getByRole("button", { name: /pair device/i }).click();
 
@@ -53,7 +53,7 @@ test("sends a pasted post link to the phone", async ({ page, context }) => {
     await route.fulfill({ json: { ok: true, delivered: 1 } });
   });
 
-  await page.goto("/beam");
+  await page.goto("/explorer/beam");
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /send to phone/i }).click();
 
@@ -68,7 +68,7 @@ test("says so when no phone is set up to receive", async ({ page, context }) => 
     route.fulfill({ status: 409, json: { code: "no-device" } }),
   );
 
-  await page.goto("/beam");
+  await page.goto("/explorer/beam");
   await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
   await page.getByRole("button", { name: /send to phone/i }).click();
 
@@ -83,7 +83,7 @@ test("rejects a non-post link without calling the server", async ({ page, contex
     return route.fulfill({ json: { ok: true, delivered: 1 } });
   });
 
-  await page.goto("/beam");
+  await page.goto("/explorer/beam");
   await page.getByLabel(POST_LINK_LABEL).fill("https://example.com/not-a-post");
   await page.getByRole("button", { name: /send to phone/i }).click();
 
@@ -92,14 +92,14 @@ test("rejects a non-post link without calling the server", async ({ page, contex
 });
 
 test("the send API refuses an unpaired caller", async ({ request }) => {
-  const response = await request.post("/api/beam/send", {
+  const response = await request.post("/explorer/api/beam/send", {
     data: { url: "https://x.com/someone/status/2" },
   });
   expect(response.status()).toBe(401);
 });
 
 test("the Beam page is kept out of search results in every locale", async ({ page }) => {
-  for (const path of ["/beam", "/uk/beam"]) {
+  for (const path of ["/explorer/beam", "/uk/explorer/beam"]) {
     await page.goto(path);
     await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
       "content",
@@ -109,7 +109,7 @@ test("the Beam page is kept out of search results in every locale", async ({ pag
 });
 
 test("the footer Beam link only shows in the installed Home Screen app", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/explorer");
   const legalNav = page.getByRole("navigation", { name: /legal/i });
   await expect(legalNav.getByRole("link", { name: /terms/i })).toBeVisible();
   await expect(legalNav.getByRole("link", { name: "Beam" })).toHaveCount(0);
@@ -126,5 +126,5 @@ test("the footer Beam link only shows in the installed Home Screen app", async (
     };
   });
   await page.reload();
-  await expect(legalNav.getByRole("link", { name: "Beam" })).toHaveAttribute("href", "/beam");
+  await expect(legalNav.getByRole("link", { name: "Beam" })).toHaveAttribute("href", "/explorer/beam");
 });

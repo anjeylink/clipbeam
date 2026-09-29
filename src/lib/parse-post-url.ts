@@ -1,4 +1,5 @@
 import type { MediaKind, Platform, VideoQualityOption, ParsedMedia } from "@/lib/media-types";
+import { appPath } from "@/lib/app-path";
 
 export type { MediaKind, Platform, VideoQualityOption, ParsedMedia };
 
@@ -173,7 +174,7 @@ function isParsePostUrlErrorCode(value: unknown): value is ParsePostUrlErrorCode
  * the URL has already passed validatePostUrl.
  */
 export async function parsePostUrl(url: string): Promise<ParsedMedia> {
-  const res = await fetch(`/api/resolve?url=${encodeURIComponent(url)}`);
+  const res = await fetch(appPath(`/api/resolve?url=${encodeURIComponent(url)}`));
 
   if (!res.ok) {
     let code: unknown;

@@ -5,7 +5,7 @@ describe("mediaProxyUrl", () => {
   it("encodes the upstream url", () => {
     const href = mediaProxyUrl("https://video.twimg.com/vid/1280x720/a.mp4?tag=1&x=2");
     const params = new URL(href, "http://localhost").searchParams;
-    expect(href.startsWith("/api/download?")).toBe(true);
+    expect(href.startsWith("/explorer/api/download?")).toBe(true);
     expect(params.get("url")).toBe("https://video.twimg.com/vid/1280x720/a.mp4?tag=1&x=2");
     expect(params.has("filename")).toBe(false);
   });

@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { getLocalizedUrl } from "intlayer";
 import { useIntlayer, useLocale } from "next-intlayer";
 import Link from "next/link";
+import { appPath } from "@/lib/app-path";
 
 const STANDALONE_QUERY = "(display-mode: standalone)";
 
@@ -33,7 +34,7 @@ export function BeamFooterLink() {
   if (!standalone) return null;
 
   return (
-    <Link href={getLocalizedUrl("/beam", locale)} className="hover:text-foreground">
+    <Link href={getLocalizedUrl(appPath("/beam"), locale)} className="hover:text-foreground">
       {content.label}
     </Link>
   );

@@ -34,25 +34,25 @@ test("the favicon is served for browsers that request it by default", async ({
 test("the default locale's prefixed URLs redirect permanently", async ({
   request,
 }) => {
-  const response = await request.get("/en/terms", { maxRedirects: 0 });
+  const response = await request.get("/en/explorer/terms", { maxRedirects: 0 });
   expect(response.status()).toBe(308);
   const location = new URL(response.headers()["location"], response.url());
-  expect(location.pathname).toBe("/terms");
+  expect(location.pathname).toBe("/explorer/terms");
 });
 
 test("robots.txt keeps crawlers off the API and points at the sitemap", async ({
   request,
 }) => {
   const body = await (await request.get("/robots.txt")).text();
-  expect(body).toContain("Disallow: /api/");
-  expect(body).toMatch(/^Sitemap: .+\/sitemap\.xml$/m);
+  expect(body).toContain("Disallow: /explorer/api/");
+  expect(body).toMatch(/^Sitemap: .+\/explorer\/sitemap\.xml$/m);
 });
 
 test("the sitemap lists every page in both locales with hreflang", async ({
   request,
 }) => {
-  const body = await (await request.get("/sitemap.xml")).text();
-  for (const path of ["/uk", "/terms", "/uk/terms", "/privacy", "/uk/dmca"]) {
+  const body = await (await request.get("/explorer/sitemap.xml")).text();
+  for (const path of ["/uk/explorer", "/explorer/terms", "/uk/explorer/terms", "/explorer/privacy", "/uk/explorer/dmca"]) {
     expect(body).toMatch(new RegExp(`<loc>[^<]+${path}</loc>`));
   }
   expect(body).toContain('hreflang="x-default"');
@@ -61,14 +61,14 @@ test("the sitemap lists every page in both locales with hreflang", async ({
 test("a page canonicalizes to itself without the query and lists its translations", async ({
   page,
 }) => {
-  await page.goto("/uk/terms?url=https://x.com/someone/status/2");
+  await page.goto("/uk/explorer/terms?url=https://x.com/someone/status/2");
 
   const canonical = page.locator('head link[rel="canonical"]');
-  expect(pathOf(await canonical.getAttribute("href"))).toBe("/uk/terms");
+  expect(pathOf(await canonical.getAttribute("href"))).toBe("/uk/explorer/terms");
   expect(await hreflangPaths(page)).toEqual({
-    en: "/terms",
-    uk: "/uk/terms",
-    "x-default": "/terms",
+    en: "/explorer/terms",
+    uk: "/uk/explorer/terms",
+    "x-default": "/explorer/terms",
   });
 });
 
@@ -76,7 +76,7 @@ test("link previews get a title and a locale's share image", async ({
   page,
   request,
 }) => {
-  await page.goto("/uk");
+  await page.goto("/uk/explorer");
 
   await expect(page.locator('head meta[property="og:title"]')).toHaveAttribute(
     "content",
@@ -100,7 +100,7 @@ test("the home page names all three supported Platforms in both locales", async 
   page,
 }) => {
   const PLATFORMS = /Instagram, X.*Threads/;
-  for (const path of ["/", "/uk"]) {
+  for (const path of ["/explorer", "/uk/explorer"]) {
     await page.goto(path);
     await expect(page, path).toHaveTitle(PLATFORMS);
     await expect(page.locator('head meta[name="description"]'), path).toHaveAttribute(
@@ -116,7 +116,7 @@ test("the home page names all three supported Platforms in both locales", async 
 test("the home page answers common questions, mirrored in structured data", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/explorer");
 
   await expect(
     page.getByRole("heading", { name: "Frequently asked questions" }),
@@ -137,7 +137,7 @@ test("the home page answers common questions, mirrored in structured data", asyn
 });
 
 test("the FAQ is translated", async ({ page }) => {
-  await page.goto("/uk");
+  await page.goto("/uk/explorer");
 
   await expect(page.getByRole("heading", { name: "Поширені запитання" })).toBeVisible();
 });

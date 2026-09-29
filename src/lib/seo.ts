@@ -5,6 +5,7 @@ import {
   type Locale,
 } from "intlayer";
 import type { Metadata } from "next";
+import { appPath } from "@/lib/app-path";
 
 // The deployed origin. Every canonical, hreflang, Open Graph, and sitemap
 // URL is resolved against it, so it must be set in production.
@@ -102,7 +103,7 @@ export function homeStructuredData({
   description,
   faq,
 }: HomeStructuredDataInput) {
-  const url = absoluteUrl(getLocalizedUrl("/", locale));
+  const url = absoluteUrl(getLocalizedUrl(appPath("/"), locale));
 
   return {
     "@context": "https://schema.org",

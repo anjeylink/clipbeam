@@ -7,7 +7,7 @@ function makeRequest(url?: string, filename?: string, headers?: HeadersInit) {
   if (url) params.set("url", url);
   if (filename !== undefined) params.set("filename", filename);
   const query = params.size ? `?${params}` : "";
-  return new NextRequest(`http://localhost/api/download${query}`, { headers });
+  return new NextRequest(`http://localhost/explorer/api/download${query}`, { headers });
 }
 
 function stubUpstream(contentType: string) {

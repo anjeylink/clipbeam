@@ -7,12 +7,13 @@ import { FeatureBullets } from "@/components/feature-bullets";
 import { Faq } from "@/components/faq";
 import { SiteFooter } from "@/components/site-footer";
 import { homeStructuredData, pageMetadata, serializeJsonLd } from "@/lib/seo";
+import { appPath } from "@/lib/app-path";
 
 export const dynamic = "force-static";
 
 export const generateMetadata = async ({
   params,
-}: PageProps<"/[locale]">): Promise<Metadata> => {
+}: PageProps<"/[locale]/explorer">): Promise<Metadata> => {
   const { locale } = await params;
   const { title, description } = getIntlayer(
     "page-metadata",
@@ -21,14 +22,14 @@ export const generateMetadata = async ({
 
   return pageMetadata({
     locale: locale as Locale,
-    path: "/",
+    path: appPath("/"),
     title,
     description,
     imageAlt: getIntlayer("og-image", locale as Locale).alt,
   });
 };
 
-export default async function Home({ params }: PageProps<"/[locale]">) {
+export default async function Home({ params }: PageProps<"/[locale]/explorer">) {
   const { locale } = await params;
   const { description } = getIntlayer("page-metadata", locale as Locale);
   const { items } = getIntlayer("faq", locale as Locale);

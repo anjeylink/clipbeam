@@ -75,7 +75,7 @@ describe("homeStructuredData", () => {
   it("describes the app at the locale's absolute home URL", () => {
     expect(data["@graph"][0]).toMatchObject({
       "@type": "WebApplication",
-      url: "http://localhost:3000/uk",
+      url: "http://localhost:3000/uk/explorer",
       inLanguage: "uk",
     });
   });

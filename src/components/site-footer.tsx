@@ -2,6 +2,7 @@ import { getLocalizedUrl } from "intlayer";
 import { useIntlayer, useLocale } from "next-intlayer";
 import Link from "next/link";
 import { BeamFooterLink } from "@/components/beam/beam-footer-link";
+import { appPath } from "@/lib/app-path";
 
 export function SiteFooter() {
   const content = useIntlayer("site-footer");
@@ -14,13 +15,13 @@ export function SiteFooter() {
           aria-label={String(content.legalNavLabel)}
           className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1"
         >
-          <Link href={getLocalizedUrl("/terms", locale)} className="hover:text-foreground">
+          <Link href={getLocalizedUrl(appPath("/terms"), locale)} className="hover:text-foreground">
             {content.links.terms}
           </Link>
-          <Link href={getLocalizedUrl("/privacy", locale)} className="hover:text-foreground">
+          <Link href={getLocalizedUrl(appPath("/privacy"), locale)} className="hover:text-foreground">
             {content.links.privacy}
           </Link>
-          <Link href={getLocalizedUrl("/dmca", locale)} className="hover:text-foreground">
+          <Link href={getLocalizedUrl(appPath("/dmca"), locale)} className="hover:text-foreground">
             {content.links.dmca}
           </Link>
           <BeamFooterLink />

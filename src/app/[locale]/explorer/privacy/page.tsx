@@ -5,29 +5,30 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LegalPage } from "@/components/legal-page";
 import { pageMetadata } from "@/lib/seo";
+import { appPath } from "@/lib/app-path";
 
 export const dynamic = "force-static";
 
 export const generateMetadata = async ({
   params,
-}: PageProps<"/[locale]/dmca">): Promise<Metadata> => {
+}: PageProps<"/[locale]/explorer/privacy">): Promise<Metadata> => {
   const { locale } = await params;
   const { title, description } = getIntlayer(
-    "dmca-page-metadata",
+    "privacy-page-metadata",
     locale as Locale,
   );
 
   return pageMetadata({
     locale: locale as Locale,
-    path: "/dmca",
+    path: appPath("/privacy"),
     title,
     description,
     imageAlt: getIntlayer("og-image", locale as Locale).alt,
   });
 };
 
-export default function DmcaPage() {
-  const content = useIntlayer("dmca-page");
+export default function PrivacyPage() {
+  const content = useIntlayer("privacy-page");
 
   return (
     <div className="flex flex-1 flex-col">

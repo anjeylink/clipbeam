@@ -35,7 +35,9 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: "pnpm dev",
-    url: "http://localhost:3000",
+    // The app lives under /explorer; "/" itself is a 404, which Playwright
+    // would read as "server not up yet".
+    url: "http://localhost:3000/explorer",
     reuseExistingServer: !process.env.CI,
     // e2e/beam.spec.ts signs its pairing cookie with the same key.
     env: { BEAM_SECRET: "e2e-beam-secret" },

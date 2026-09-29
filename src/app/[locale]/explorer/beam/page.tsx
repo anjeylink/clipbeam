@@ -13,7 +13,7 @@ import { isBeamPaired } from "@/lib/server/beam/beam-session";
 // and nothing public links to it (see BeamFooterLink).
 export const generateMetadata = async ({
   params,
-}: PageProps<"/[locale]/beam">): Promise<Metadata> => {
+}: PageProps<"/[locale]/explorer/beam">): Promise<Metadata> => {
   const { locale } = await params;
   const { title, description } = getIntlayer("beam-page-metadata", locale as Locale);
 

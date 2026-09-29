@@ -5,29 +5,30 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LegalPage } from "@/components/legal-page";
 import { pageMetadata } from "@/lib/seo";
+import { appPath } from "@/lib/app-path";
 
 export const dynamic = "force-static";
 
 export const generateMetadata = async ({
   params,
-}: PageProps<"/[locale]/privacy">): Promise<Metadata> => {
+}: PageProps<"/[locale]/explorer/terms">): Promise<Metadata> => {
   const { locale } = await params;
   const { title, description } = getIntlayer(
-    "privacy-page-metadata",
+    "terms-page-metadata",
     locale as Locale,
   );
 
   return pageMetadata({
     locale: locale as Locale,
-    path: "/privacy",
+    path: appPath("/terms"),
     title,
     description,
     imageAlt: getIntlayer("og-image", locale as Locale).alt,
   });
 };
 
-export default function PrivacyPage() {
-  const content = useIntlayer("privacy-page");
+export default function TermsPage() {
+  const content = useIntlayer("terms-page");
 
   return (
     <div className="flex flex-1 flex-col">

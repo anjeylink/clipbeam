@@ -6,6 +6,7 @@ import { useIntlayer, useLocale } from "next-intlayer";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { urlBase64ToUint8Array } from "@/lib/url-base64-to-uint8array";
+import { appPath } from "@/lib/app-path";
 
 type DeviceStatus =
   | "checking"
@@ -29,7 +30,7 @@ function isStandalone() {
 }
 
 async function saveSubscription(subscription: PushSubscription, locale: string) {
-  const res = await fetch("/api/beam/subscribe", {
+  const res = await fetch(appPath("/api/beam/subscribe"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subscription: subscription.toJSON(), locale }),

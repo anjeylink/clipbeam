@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { appPath } from "@/lib/app-path";
 
 type PairStatus = "idle" | "pairing" | "invalid-key" | "failed";
 
@@ -24,7 +25,7 @@ export function BeamPairForm() {
     if (!key || status === "pairing") return;
     setStatus("pairing");
     try {
-      const res = await fetch("/api/beam/pair", {
+      const res = await fetch(appPath("/api/beam/pair"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key }),
