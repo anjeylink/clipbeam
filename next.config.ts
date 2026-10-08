@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   allowedDevOrigins: ["ubuntu"],
+  experimental: {
+    // src/app/global-not-found.tsx: the 404 page for every unmatched URL.
+    globalNotFound: true,
+  },
   async headers() {
     return [
       {
