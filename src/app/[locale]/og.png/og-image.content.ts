@@ -4,12 +4,12 @@ const ogImageContent = {
   key: "og-image",
   content: {
     alt: t({
-      en: "ClipBeam — share videos and images from Instagram, X (Twitter) and Threads posts",
-      uk: "ClipBeam — діліться відео та зображеннями з постів Instagram, X (Twitter) і Threads",
+      en: "ClipBeam — download and share Instagram, X (Twitter) and Threads videos and images",
+      uk: "ClipBeam — завантажуйте й надсилайте відео та зображення з Instagram, X (Twitter) і Threads",
     }),
     tagline: t({
-      en: "Paste a post link. Share the actual file.",
-      uk: "Вставте посилання на пост. Поділіться самим файлом.",
+      en: "Paste a post link. Download or share the file.",
+      uk: "Вставте посилання на пост. Завантажте файл або поділіться ним.",
     }),
   },
 } satisfies Dictionary;

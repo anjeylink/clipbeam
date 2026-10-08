@@ -132,6 +132,36 @@ export function homeStructuredData({
   };
 }
 
+type BreadcrumbStructuredDataInput = {
+  // Root first; each path is locale-less, e.g. "/" or "/terms".
+  crumbs: { name: string; path: string }[];
+  locale: Locale;
+};
+
+/**
+ * JSON-LD breadcrumb trail for a page below the home page. Google requires
+ * absolute item URLs.
+ */
+export function breadcrumbStructuredData({
+  crumbs,
+  locale,
+}: BreadcrumbStructuredDataInput) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: crumbs.map(({ name, path }, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name,
+          item: absoluteUrl(getLocalizedUrl(path, locale)),
+        })),
+      },
+    ],
+  };
+}
+
 /**
  * Serializes JSON-LD for a <script> tag. "<" is escaped so no string in the
  * data can close the tag early.

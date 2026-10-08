@@ -4,12 +4,12 @@ const heroSectionContent = {
   key: "hero-section",
   content: {
     heading: t({
-      en: "Share videos and images from Instagram, X (Twitter) and Threads posts",
-      uk: "Діліться відео та зображеннями з постів Instagram, X (Twitter) і Threads",
+      en: "Download and share Instagram, X (Twitter) and Threads videos and images",
+      uk: "Завантажуйте й надсилайте відео та зображення з Instagram, X (Twitter) і Threads",
     }),
     subtext: t({
-      en: "Paste a link, preview it instantly, and share the actual file straight into WhatsApp, Slack, or wherever you chat — no link-dropping required.",
-      uk: "Вставте посилання, миттєво перегляньте вміст і поділіться самим файлом напряму у WhatsApp, Slack чи будь-якому месенджері — без пересилання самого посилання.",
+      en: "Paste a link, preview it instantly, then download the file or share it straight into WhatsApp, Slack, or wherever you chat — no link-dropping required.",
+      uk: "Вставте посилання, миттєво перегляньте вміст, а тоді завантажте файл або поділіться ним напряму у WhatsApp, Slack чи будь-якому месенджері — без пересилання самого посилання.",
     }),
   },
 } satisfies Dictionary;
