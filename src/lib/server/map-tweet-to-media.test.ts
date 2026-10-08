@@ -1,8 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { mapTweetJsonToMedia } from "./map-tweet-to-media";
 import { MediaResolutionError } from "./media-resolution-error";
+import type { ResolvedMedia, ResolvedVideoQuality } from "./resolved-media";
 
 const POST_URL = "https://x.com/someone/status/123";
+
+// The qualities of a post expected to hold exactly one video.
+function videoQualities(media: ResolvedMedia): ResolvedVideoQuality[] {
+  expect(media.items).toHaveLength(1);
+  const [item] = media.items;
+  if (item.kind !== "video") throw new Error("expected a video");
+  return item.qualities;
+}
 
 describe("mapTweetJsonToMedia", () => {
   it("throws unsupported-post for a tombstoned tweet", () => {
@@ -28,21 +37,52 @@ describe("mapTweetJsonToMedia", () => {
     }
   });
 
-  it("throws multi-media-unsupported for a multi-photo tweet", () => {
-    const multiPhoto = {
+  it("maps a multi-media tweet to one item per attachment, in the post's order", () => {
+    const mixed = {
       __typename: "Tweet",
       user: { screen_name: "someone" },
       mediaDetails: [
         { type: "photo", media_url_https: "https://pbs.twimg.com/a.jpg" },
+        {
+          type: "video",
+          media_url_https: "https://pbs.twimg.com/poster.jpg",
+          video_info: {
+            duration_millis: 1000,
+            variants: [
+              {
+                content_type: "video/mp4",
+                url: "https://video.twimg.com/vid/1280x720/a.mp4",
+                bitrate: 2176000,
+              },
+            ],
+          },
+        },
         { type: "photo", media_url_https: "https://pbs.twimg.com/b.jpg" },
       ],
     };
-    expect(() => mapTweetJsonToMedia(multiPhoto, POST_URL)).toThrow(MediaResolutionError);
-    try {
-      mapTweetJsonToMedia(multiPhoto, POST_URL);
-    } catch (err) {
-      expect((err as MediaResolutionError).code).toBe("multi-media-unsupported");
-    }
+    expect(mapTweetJsonToMedia(mixed, POST_URL).items).toEqual([
+      { kind: "image", imageUrl: "https://pbs.twimg.com/a.jpg" },
+      expect.objectContaining({
+        kind: "video",
+        posterUrl: "https://pbs.twimg.com/poster.jpg",
+        qualities: [expect.objectContaining({ label: "720p" })],
+      }),
+      { kind: "image", imageUrl: "https://pbs.twimg.com/b.jpg" },
+    ]);
+  });
+
+  it("drops a video with no mp4 variant rather than the whole post", () => {
+    const tweet = {
+      __typename: "Tweet",
+      user: { screen_name: "someone" },
+      mediaDetails: [
+        { type: "photo", media_url_https: "https://pbs.twimg.com/a.jpg" },
+        { type: "video", media_url_https: "https://pbs.twimg.com/poster.jpg" },
+      ],
+    };
+    expect(mapTweetJsonToMedia(tweet, POST_URL).items).toEqual([
+      { kind: "image", imageUrl: "https://pbs.twimg.com/a.jpg" },
+    ]);
   });
 
   it("maps a single-photo tweet to an image result", () => {
@@ -56,9 +96,7 @@ describe("mapTweetJsonToMedia", () => {
       platform: "x",
       postUrl: POST_URL,
       authorHandle: "someone",
-      kind: "image",
-      posterUrl: "https://pbs.twimg.com/a.jpg",
-      imageUrl: "https://pbs.twimg.com/a.jpg",
+      items: [{ kind: "image", imageUrl: "https://pbs.twimg.com/a.jpg" }],
     });
   });
 
@@ -90,11 +128,11 @@ describe("mapTweetJsonToMedia", () => {
       ],
     };
     const media = mapTweetJsonToMedia(video, POST_URL);
-    expect(media.kind).toBe("video");
-    expect(media.qualities).toHaveLength(2);
-    expect(media.qualities?.[0]).toMatchObject({ label: "720p", width: 1280, height: 720 });
-    expect(media.qualities?.[0].approxSizeMb).toBeCloseTo(3.02, 1);
-    expect(media.qualities?.[1]).toMatchObject({ label: "360p", width: 640, height: 360 });
+    const qualities = videoQualities(media);
+    expect(qualities).toHaveLength(2);
+    expect(qualities[0]).toMatchObject({ label: "720p", width: 1280, height: 720 });
+    expect(qualities[0].approxSizeMb).toBeCloseTo(3.02, 1);
+    expect(qualities[1]).toMatchObject({ label: "360p", width: 640, height: 360 });
   });
 
   it("maps an animated_gif tweet through the same video path as a regular video", () => {
@@ -119,7 +157,6 @@ describe("mapTweetJsonToMedia", () => {
       ],
     };
     const media = mapTweetJsonToMedia(gif, POST_URL);
-    expect(media.kind).toBe("video");
-    expect(media.qualities).toHaveLength(1);
+    expect(videoQualities(media)).toHaveLength(1);
   });
 });

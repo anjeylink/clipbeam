@@ -10,29 +10,33 @@ const VIDEO_FIXTURE = {
   platform: "x",
   postUrl: "https://x.com/someone/status/2",
   authorHandle: "someone",
-  kind: "video",
-  posterUrl: "/mock/sample-video-poster.jpg",
-  qualities: [
+  items: [
     {
-      label: "1080p",
-      width: 1920,
-      height: 1080,
-      proxiedUrl: proxied("/mock/sample-video-1080p.mp4"),
-      approxSizeMb: 4.8,
-    },
-    {
-      label: "720p",
-      width: 1280,
-      height: 720,
-      proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
-      approxSizeMb: 2.6,
-    },
-    {
-      label: "480p",
-      width: 854,
-      height: 480,
-      proxiedUrl: proxied("/mock/sample-video-480p.mp4"),
-      approxSizeMb: 1.3,
+      kind: "video",
+      posterUrl: "/mock/sample-video-poster.jpg",
+      qualities: [
+        {
+          label: "1080p",
+          width: 1920,
+          height: 1080,
+          proxiedUrl: proxied("/mock/sample-video-1080p.mp4"),
+          approxSizeMb: 4.8,
+        },
+        {
+          label: "720p",
+          width: 1280,
+          height: 720,
+          proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
+          approxSizeMb: 2.6,
+        },
+        {
+          label: "480p",
+          width: 854,
+          height: 480,
+          proxiedUrl: proxied("/mock/sample-video-480p.mp4"),
+          approxSizeMb: 1.3,
+        },
+      ],
     },
   ],
 };
@@ -42,14 +46,18 @@ const THREADS_VIDEO_FIXTURE = {
   platform: "threads",
   postUrl: "https://www.threads.com/@someone/post/ABC123",
   authorHandle: "someone",
-  kind: "video",
-  qualities: [
+  items: [
     {
-      label: null,
-      width: 0,
-      height: 0,
-      proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
-      approxSizeMb: 3.9,
+      kind: "video",
+      qualities: [
+        {
+          label: null,
+          width: 0,
+          height: 0,
+          proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
+          approxSizeMb: 3.9,
+        },
+      ],
     },
   ],
 };
@@ -58,9 +66,13 @@ const THREADS_IMAGE_FIXTURE = {
   platform: "threads",
   postUrl: "https://www.threads.com/@someone/post/IMG456",
   authorHandle: "someone",
-  kind: "image",
-  previewUrl: proxied("/mock/sample-image.jpg"),
-  proxiedUrl: proxied("/mock/sample-image.jpg"),
+  items: [
+    {
+      kind: "image",
+      previewUrl: proxied("/mock/sample-image.jpg"),
+      proxiedUrl: proxied("/mock/sample-image.jpg"),
+    },
+  ],
 };
 
 // An Instagram embed gives dimensions and a poster, so its one quality is
@@ -69,15 +81,66 @@ const INSTAGRAM_VIDEO_FIXTURE = {
   platform: "instagram",
   postUrl: "https://www.instagram.com/p/REEL123/",
   authorHandle: "someone",
-  kind: "video",
-  posterUrl: proxied("/mock/sample-video-poster.jpg"),
-  qualities: [
+  items: [
     {
-      label: "720p",
-      width: 720,
-      height: 1280,
-      proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
-      approxSizeMb: 3.9,
+      kind: "video",
+      posterUrl: proxied("/mock/sample-video-poster.jpg"),
+      qualities: [
+        {
+          label: "720p",
+          width: 720,
+          height: 1280,
+          proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
+          approxSizeMb: 3.9,
+        },
+      ],
+    },
+  ],
+};
+
+// A Threads carousel: a video with a poster and two qualities, an image,
+// and a poster-less video with one unlabelled quality.
+const CAROUSEL_FIXTURE = {
+  platform: "threads",
+  postUrl: "https://www.threads.com/@someone/post/CAR789",
+  authorHandle: "someone",
+  items: [
+    {
+      kind: "video",
+      posterUrl: proxied("/mock/sample-video-poster.jpg"),
+      qualities: [
+        {
+          label: "1080p",
+          width: 1920,
+          height: 1080,
+          proxiedUrl: proxied("/mock/sample-video-1080p.mp4"),
+          approxSizeMb: 4.8,
+        },
+        {
+          label: "720p",
+          width: 1280,
+          height: 720,
+          proxiedUrl: proxied("/mock/sample-video-720p.mp4"),
+          approxSizeMb: 2.6,
+        },
+      ],
+    },
+    {
+      kind: "image",
+      previewUrl: proxied("/mock/sample-image.jpg"),
+      proxiedUrl: proxied("/mock/sample-image.jpg"),
+    },
+    {
+      kind: "video",
+      qualities: [
+        {
+          label: null,
+          width: 0,
+          height: 0,
+          proxiedUrl: proxied("/mock/sample-video-480p.mp4"),
+          approxSizeMb: 1.3,
+        },
+      ],
     },
   ],
 };
@@ -348,20 +411,6 @@ test("names X in a rate-limit error for an X link", async ({ page }) => {
   });
 });
 
-test("rejects a Threads carousel with the multi-media message", async ({ page }) => {
-  await page.route("**/api/resolve*", (route) =>
-    route.fulfill({ status: 422, json: { code: "multi-media-unsupported" } }),
-  );
-
-  await page.goto("/");
-  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/CAR789");
-  await page.getByRole("button", { name: /get media/i }).click();
-
-  await expect(page.getByText(/multiple photos or videos aren't supported/i)).toBeVisible({
-    timeout: 5000,
-  });
-});
-
 test("accepts a Threads share link instead of rejecting it as invalid", async ({ page }) => {
   const resolveRequests: string[] = [];
   await page.route("**/api/resolve*", (route) => {
@@ -447,18 +496,98 @@ test("names Instagram in a rate-limit error for an Instagram link", async ({ pag
   });
 });
 
-test("rejects an Instagram carousel with the multi-media message", async ({ page }) => {
-  await page.route("**/api/resolve*", (route) =>
-    route.fulfill({ status: 422, json: { code: "multi-media-unsupported" } }),
-  );
+test("a carousel lets the user pick which item to preview, download and share", async ({
+  page,
+}) => {
+  await page.route("**/api/resolve*", (route) => route.fulfill({ json: CAROUSEL_FIXTURE }));
 
   await page.goto("/");
-  await page.getByLabel(POST_LINK_LABEL).fill("https://www.instagram.com/p/CAR789/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/CAR789");
   await page.getByRole("button", { name: /get media/i }).click();
 
-  await expect(page.getByText(/multiple photos or videos aren't supported/i)).toBeVisible({
+  const picker = page.getByRole("radiogroup", { name: /choose media \(3 in this post\)/i });
+  await expect(picker).toBeVisible({ timeout: 5000 });
+  await expect(picker.getByRole("radio")).toHaveCount(3);
+  const downloadLink = page.getByRole("link", { name: /^download$/i });
+  const downloadTarget = async () => {
+    const linked = new URL((await downloadLink.getAttribute("href"))!, page.url());
+    return [linked.searchParams.get("url"), linked.searchParams.get("filename")];
+  };
+
+  // The first item is selected: a video, defaulting to its 720p quality.
+  await expect(picker.getByRole("radio", { name: "Video 1 of 3" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /720p/i })).toBeChecked();
+  expect(await downloadTarget()).toEqual(["/mock/sample-video-720p.mp4", "clipbeam-someone-1-720p"]);
+
+  await picker.getByRole("radio", { name: "Image 2 of 3" }).click();
+  await expect(picker.getByRole("radio", { name: "Image 2 of 3" })).toBeChecked();
+  await expect(page.getByRole("img", { name: /@someone/i })).toHaveAttribute(
+    "src",
+    proxied("/mock/sample-image.jpg"),
+  );
+  await expect(page.getByRole("radiogroup", { name: /video quality/i })).toHaveCount(0);
+  expect(await downloadTarget()).toEqual(["/mock/sample-image.jpg", "clipbeam-someone-2-image"]);
+
+  // Arrow keys move the selection like any radio group; the last item is a
+  // video with no poster and a single unlabelled quality.
+  await page.keyboard.press("ArrowRight");
+  await expect(picker.getByRole("radio", { name: "Video 3 of 3" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /original/i })).toBeChecked();
+  expect(await downloadTarget()).toEqual([
+    "/mock/sample-video-480p.mp4",
+    "clipbeam-someone-3-original",
+  ]);
+});
+
+test("on a Web Share-capable browser, Share sends the picked carousel item", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.assign(navigator, {
+      canShare: () => true,
+      share: (data: ShareData) => {
+        (window as unknown as { sharedFiles: string[] }).sharedFiles = (data.files ?? []).map(
+          (file) => file.name,
+        );
+        return Promise.resolve();
+      },
+    });
+  });
+  await page.route("**/api/resolve*", (route) => route.fulfill({ json: CAROUSEL_FIXTURE }));
+  await page.route("**/api/download*", (route) => {
+    if (route.request().resourceType() === "media") return route.abort();
+    const isImage = route.request().url().includes("sample-image.jpg");
+    return route.fulfill({
+      headers: { "content-type": isImage ? "image/jpeg" : "video/mp4" },
+      body: "fake-media-bytes",
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://www.threads.com/@someone/post/CAR789");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await page.getByRole("radio", { name: "Image 2 of 3" }).click();
+  const shareButton = page.getByRole("button", { name: /^share$/i });
+  await expect(shareButton).toBeEnabled({ timeout: 5000 });
+  await shareButton.click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { sharedFiles?: string[] }).sharedFiles),
+    )
+    .toEqual(["clipbeam-someone-2-image.jpg"]);
+});
+
+test("a single-media post shows no item picker", async ({ page }) => {
+  await page.route("**/api/resolve*", (route) => route.fulfill({ json: VIDEO_FIXTURE }));
+
+  await page.goto("/");
+  await page.getByLabel(POST_LINK_LABEL).fill("https://x.com/someone/status/2");
+  await page.getByRole("button", { name: /get media/i }).click();
+
+  await expect(page.getByRole("radiogroup", { name: /video quality/i })).toBeVisible({
     timeout: 5000,
   });
+  await expect(page.getByRole("radiogroup", { name: /choose media/i })).toHaveCount(0);
 });
 
 // ?url= is the source of truth for which post is shown.

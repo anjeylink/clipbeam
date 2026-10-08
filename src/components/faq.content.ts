@@ -50,12 +50,22 @@ const faqContent = {
       },
       {
         question: t({
-          en: "Does it work with private posts or posts with several images?",
-          uk: "Чи працює це з приватними постами або постами з кількома зображеннями?",
+          en: "Does it work with posts that have several images or videos?",
+          uk: "Чи працює це з постами, де кілька зображень чи відео?",
         }),
         answer: t({
-          en: "Not yet. ClipBeam reads public posts only, and takes one image or video per link.",
-          uk: "Поки що ні. ClipBeam читає лише публічні пости й бере одне зображення чи відео з посилання.",
+          en: "Yes. ClipBeam shows every image and video in the post, and you pick the one to download or share.",
+          uk: "Так. ClipBeam показує всі зображення та відео з поста, а ви обираєте, що завантажити чи надіслати.",
+        }),
+      },
+      {
+        question: t({
+          en: "Does it work with private posts?",
+          uk: "Чи працює це з приватними постами?",
+        }),
+        answer: t({
+          en: "Not yet. ClipBeam reads public posts only.",
+          uk: "Поки що ні. ClipBeam читає лише публічні пости.",
         }),
       },
     ],

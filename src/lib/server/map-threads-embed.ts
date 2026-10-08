@@ -1,4 +1,4 @@
-import type { ResolvedMedia } from "@/lib/server/resolved-media";
+import type { ResolvedMedia, ResolvedMediaItem } from "@/lib/server/resolved-media";
 import { MediaResolutionError } from "@/lib/server/media-resolution-error";
 import { decodeHtmlEntities } from "@/lib/server/html-entities";
 
@@ -18,18 +18,19 @@ const QUOTE_CONTAINER_MARKER = 'class="QuotePostContainer"';
 const MEDIA_SECTION_PATTERN = /class="[^"]*Media(?:Scroll)?Container/;
 const CAROUSEL_MARKER = "MediaScrollContainer";
 const HANDLE_PATTERN = /class="HeaderLink"[^>]*>\s*<span>([^<]+)<\/span>/;
-const VIDEO_SOURCE_PATTERN = /<video\b[^>]*>\s*<source\b[^>]*\bsrc="([^"]+)"/g;
-const IMAGE_PATTERN = /<img\b[^>]*\bsrc="([^"]+)"/g;
+// A video's <source> (group 1) or an image (group 2), in document order,
+// which is the carousel's order.
+const MEDIA_PATTERN = /<video\b[^>]*>\s*<source\b[^>]*\bsrc="([^"]+)"|<img\b[^>]*\bsrc="([^"]+)"/g;
 
 export function threadsPostUrl(handle: string, shortcode: string): string {
   return `https://www.threads.com/@${handle}/post/${shortcode}`;
 }
 
 /**
- * Maps a Threads embed page (`/t/<shortcode>/embed`) to ResolvedMedia.
- * Pure/no I/O. Throws MediaResolutionError when the embed is conclusive
- * (post unavailable → not-found, carousel → multi-media-unsupported) and
- * returns null when it isn't — no media of its own found (a text post,
+ * Maps a Threads embed page (`/t/<shortcode>/embed`) to ResolvedMedia, one
+ * item per carousel entry. Pure/no I/O. Throws MediaResolutionError when
+ * the embed is conclusive (post unavailable → not-found) and returns null
+ * when it isn't — no media of its own found (a text post,
  * including one that only quotes a media post, or markup we don't
  * recognise), or several media elements without the carousel wrapper — so
  * the caller can fall back to the full post page.
@@ -56,39 +57,28 @@ export function mapThreadsEmbedToMedia(html: string, shortcode: string): Resolve
   if (mediaStart === -1) return null;
   const mediaSection = target.slice(mediaStart);
 
-  const videoUrls = [...mediaSection.matchAll(VIDEO_SOURCE_PATTERN)].map((m) =>
-    decodeHtmlEntities(m[1]),
+  const items = [...mediaSection.matchAll(MEDIA_PATTERN)].map(
+    ([, videoUrl, imageUrl]): ResolvedMediaItem =>
+      videoUrl
+        ? {
+            kind: "video",
+            // The embed carries no dimensions, bitrate or poster: a null
+            // label renders as "Original", and enrichVideoQualitySizes
+            // fills in the size.
+            qualities: [
+              { label: null, width: 0, height: 0, url: decodeHtmlEntities(videoUrl), approxSizeMb: 0 },
+            ],
+          }
+        : { kind: "image", imageUrl: decodeHtmlEntities(imageUrl) },
   );
-  const imageUrls = [...mediaSection.matchAll(IMAGE_PATTERN)].map((m) => decodeHtmlEntities(m[1]));
-  const mediaCount = videoUrls.length + imageUrls.length;
 
-  if (mediaCount === 0) return null;
-  if (mediaCount > 1) {
-    if (mediaSection.includes(CAROUSEL_MARKER)) {
-      throw new MediaResolutionError("multi-media-unsupported");
-    }
-    return null;
-  }
-
-  const postUrl = threadsPostUrl(authorHandle, shortcode);
-
-  if (videoUrls.length === 1) {
-    return {
-      platform: "threads",
-      postUrl,
-      authorHandle,
-      kind: "video",
-      // The embed carries no dimensions or bitrate: a null label renders as
-      // "Original", and enrichVideoQualitySizes fills in the size.
-      qualities: [{ label: null, width: 0, height: 0, url: videoUrls[0], approxSizeMb: 0 }],
-    };
-  }
+  if (items.length === 0) return null;
+  if (items.length > 1 && !mediaSection.includes(CAROUSEL_MARKER)) return null;
 
   return {
     platform: "threads",
-    postUrl,
+    postUrl: threadsPostUrl(authorHandle, shortcode),
     authorHandle,
-    kind: "image",
-    imageUrl: imageUrls[0],
+    items,
   };
 }

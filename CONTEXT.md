@@ -9,8 +9,12 @@ The social network a Post lives on — currently X, Instagram or Threads. Detect
 _Avoid_: source, network, provider
 
 **Post**:
-A single public item on a Platform (an X tweet, an Instagram post or Reel, a Threads post) that ClipBeam resolves to exactly one image or video. Posts with several media items (carousels) are out of scope. Instagram Stories and Highlights are not Posts.
+A single public item on a Platform (an X tweet, an Instagram post or Reel, a Threads post) that ClipBeam resolves to one or more Media Items. Instagram Stories and Highlights are not Posts.
 _Avoid_: tweet (except when talking about X specifically), thread, reel (as a separate concept — a Reel is just an Instagram Post whose media is a video)
+
+**Media Item**:
+One image or video of a Post. Most Posts have one; a carousel (an X post with several attachments, an Instagram or Threads carousel) has several, kept in the Post's own order. The user picks one Media Item at a time to preview, download or share.
+_Avoid_: slide, attachment, asset
 
 **ResolvedMedia**:
 The media extracted from a Post right after resolving the link, with its URLs exactly as the Platform's CDN gave them. Stays server-side only — some of those URLs will 403 (X video) or carry expiring signatures (Threads, Instagram) if a browser requests them directly.

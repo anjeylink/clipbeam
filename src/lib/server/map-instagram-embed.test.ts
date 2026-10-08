@@ -24,37 +24,60 @@ function errorCode(fn: () => unknown): string | undefined {
 describe("mapInstagramEmbedToMedia", () => {
   it("maps a Reel to one quality labelled from its dimensions, with a poster", () => {
     const media = mapInstagramEmbedToMedia(fixture("video"), "DdhFkS7KGkZ");
-    expect(media).toMatchObject({
+    expect(media).toEqual({
       platform: "instagram",
-      kind: "video",
       // A collab post: credited to the owner, not the co-author.
       authorHandle: "ravens",
       postUrl: "https://www.instagram.com/p/DdhFkS7KGkZ/",
+      items: [
+        {
+          kind: "video",
+          posterUrl: expect.stringMatching(/^https:\/\/[^/]+\.fbcdn\.net\//),
+          qualities: [
+            {
+              label: "720p",
+              width: 720,
+              height: 1280,
+              approxSizeMb: 0,
+              url: expect.stringMatching(/^https:\/\/[^/]+\.fbcdn\.net\/.+\.mp4\?/),
+            },
+          ],
+        },
+      ],
     });
-    expect(media?.posterUrl).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\//);
-    expect(media?.qualities).toEqual([
-      expect.objectContaining({ label: "720p", width: 720, height: 1280, approxSizeMb: 0 }),
-    ]);
-    expect(media?.qualities?.[0].url).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\/.+\.mp4\?/);
   });
 
   it("maps an image to the widest srcset entry, not the header avatar", () => {
     const media = mapInstagramEmbedToMedia(fixture("image"), "Ddbo7s0lzoy");
     expect(media).toMatchObject({
       platform: "instagram",
-      kind: "image",
       authorHandle: "nasa",
       postUrl: "https://www.instagram.com/p/Ddbo7s0lzoy/",
+      items: [{ kind: "image" }],
     });
-    expect(media?.imageUrl).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\/v\/t51\.82787-15\/815798049_/);
-    expect(media?.imageUrl).toContain("stp=dst-jpg_e35_tt6&");
-    expect(media?.imageUrl).not.toContain("&amp;");
+    const imageUrl = media?.items[0].kind === "image" ? media.items[0].imageUrl : "";
+    expect(imageUrl).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\/v\/t51\.82787-15\/815798049_/);
+    expect(imageUrl).toContain("stp=dst-jpg_e35_tt6&");
+    expect(imageUrl).not.toContain("&amp;");
   });
 
-  it("rejects a carousel as multi-media-unsupported", () => {
-    expect(errorCode(() => mapInstagramEmbedToMedia(fixture("carousel"), "DdZMsPElzSl"))).toBe(
-      "multi-media-unsupported",
+  it("maps a carousel to one item per slide, in order", () => {
+    const media = mapInstagramEmbedToMedia(fixture("carousel"), "DdZMsPElzSl");
+    expect(media?.items).toEqual([
+      { kind: "image", imageUrl: expect.stringContaining("/814507513_") },
+      { kind: "image", imageUrl: expect.stringContaining("/813698311_") },
+    ]);
+  });
+
+  it("is inconclusive for a carousel with a slide it can't read", () => {
+    // A video slide stripped of its video_url: a partial carousel must not
+    // pass for the whole post.
+    const withUnreadableSlide = fixture("carousel").replaceAll(
+      '\\"is_video\\":false',
+      '\\"is_video\\":true',
     );
+    expect(withUnreadableSlide).not.toBe(fixture("carousel"));
+    expect(mapInstagramEmbedToMedia(withUnreadableSlide, "DdZMsPElzSl")).toBeNull();
   });
 
   it("maps a broken-media embed (deleted, private or gated) to not-found", () => {

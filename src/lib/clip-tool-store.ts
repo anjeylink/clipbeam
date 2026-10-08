@@ -2,6 +2,7 @@ import {
   parsePostUrl,
   validatePostUrl,
   ParsePostUrlError,
+  type MediaItem,
   type ParsedMedia,
   type ParsePostUrlErrorCode,
   type Platform,
@@ -22,6 +23,9 @@ export type ClipToolState =
       status: "loaded";
       url: string;
       media: ParsedMedia;
+      // Which of the Post's items is previewed, shared and downloaded.
+      selectedItemIndex: number;
+      // Indexes the selected item's qualities; 0 for an image.
       selectedQualityIndex: number;
       blob: Blob | null;
       blobStatus: BlobStatus;
@@ -39,17 +43,17 @@ export type ClipToolState =
 // smallest available if every variant exceeds that.
 const DEFAULT_QUALITY_MAX_SHORT_EDGE = 720;
 
-function defaultQualityIndex(media: ParsedMedia): number {
-  if (media.kind !== "video" || media.qualities.length === 0) return 0;
-  const index = media.qualities.findIndex(
+function defaultQualityIndex(item: MediaItem): number {
+  if (item.kind !== "video" || item.qualities.length === 0) return 0;
+  const index = item.qualities.findIndex(
     (q) => Math.min(q.width, q.height) <= DEFAULT_QUALITY_MAX_SHORT_EDGE,
   );
-  return index === -1 ? media.qualities.length - 1 : index;
+  return index === -1 ? item.qualities.length - 1 : index;
 }
 
-/** The already-proxied URL for the media (or the selected video quality). */
-function proxiedMediaUrl(media: ParsedMedia, qualityIndex: number): string {
-  return media.kind === "video" ? media.qualities[qualityIndex].proxiedUrl : media.proxiedUrl;
+/** The already-proxied URL for the item (or its selected video quality). */
+function proxiedMediaUrl(item: MediaItem, qualityIndex: number): string {
+  return item.kind === "video" ? item.qualities[qualityIndex].proxiedUrl : item.proxiedUrl;
 }
 
 export const URL_QUERY_PARAM = "url";
@@ -79,7 +83,7 @@ export const IDLE_STATE: ClipToolState = { status: "idle", url: "" };
 
 /**
  * Module-level singleton (not React state) holding everything the URL can't:
- * the resolved media, selected quality, and any in-flight blob fetch. It
+ * the resolved media, selected item and quality, and any in-flight blob fetch. It
  * survives remounts of the component tree that holds <ClipTool/> — e.g. the
  * locale switcher navigating to a new `[locale]/page.tsx`, which the App
  * Router always re-renders from scratch — so a remount whose ?url= matches
@@ -95,7 +99,7 @@ class ClipToolStore {
   private submitRequestId = 0;
   private blobRequestId = 0;
   // Keyed by the resolved media URL (stable per quality/image), so
-  // re-selecting a quality already downloaded this session resolves
+  // re-selecting an item or quality already downloaded this session resolves
   // instantly from memory instead of re-hitting the network and flashing
   // the "preparing" loading state — even though the browser's own HTTP
   // cache would likely serve it fast too, skipping the fetch entirely
@@ -171,7 +175,8 @@ class ClipToolStore {
           status: "loaded",
           url,
           media,
-          selectedQualityIndex: defaultQualityIndex(media),
+          selectedItemIndex: 0,
+          selectedQualityIndex: defaultQualityIndex(media.items[0]),
           blob: null,
           blobStatus: "idle",
         });
@@ -184,21 +189,36 @@ class ClipToolStore {
       });
   }
 
+  selectItem = (index: number) => {
+    if (this.state.status !== "loaded" || this.state.selectedItemIndex === index) return;
+    const item = this.state.media.items[index];
+    if (!item) return;
+    this.select(index, defaultQualityIndex(item));
+  };
+
   selectQuality = (index: number) => {
     if (this.state.status !== "loaded" || this.state.selectedQualityIndex === index) return;
+    this.select(this.state.selectedItemIndex, index);
+  };
 
-    // Drop any in-flight fetch for the previous quality; ensureBlob() starts
-    // the new one if the Share flow wants it.
+  private select(itemIndex: number, qualityIndex: number) {
+    if (this.state.status !== "loaded") return;
+
+    // Drop any in-flight fetch for the previous selection; ensureBlob()
+    // starts the new one if the Share flow wants it.
     this.blobAbortController?.abort();
     this.blobRequestId++;
-    const cached = this.blobCache.get(proxiedMediaUrl(this.state.media, index));
+    const cached = this.blobCache.get(
+      proxiedMediaUrl(this.state.media.items[itemIndex], qualityIndex),
+    );
     this.setState({
       ...this.state,
-      selectedQualityIndex: index,
+      selectedItemIndex: itemIndex,
+      selectedQualityIndex: qualityIndex,
       blob: cached ?? null,
       blobStatus: cached ? "ready" : "idle",
     });
-  };
+  }
 
   // Idempotent: starts the blob download only if it hasn't been requested for
   // the current selection. Called by the Share UI once it knows the browser
@@ -237,13 +257,13 @@ class ClipToolStore {
     const controller = new AbortController();
     this.blobAbortController = controller;
 
-    const { media, selectedQualityIndex } = this.state;
+    const { media, selectedItemIndex, selectedQualityIndex } = this.state;
     const requestId = ++this.blobRequestId;
     // Already proxied by toClientMedia server-side: video.twimg.com 403s
     // browser-originated cross-origin requests and Threads URLs expire, so
     // every media URL the client holds is either hotlink-safe or already
     // routed through /api/download — this store never has to know which.
-    const sourceUrl = proxiedMediaUrl(media, selectedQualityIndex);
+    const sourceUrl = proxiedMediaUrl(media.items[selectedItemIndex], selectedQualityIndex);
 
     fetch(sourceUrl, { signal: controller.signal })
       .then((res) => {

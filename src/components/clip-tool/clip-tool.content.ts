@@ -32,10 +32,6 @@ const clipToolContent = {
         en: "That post doesn't have an image or video to grab.",
         uk: "У цьому пості немає зображення чи відео для завантаження.",
       }),
-      "multi-media-unsupported": t({
-        en: "Posts with multiple photos or videos aren't supported yet — try a post with a single image or video.",
-        uk: "Пости з кількома фото чи відео поки не підтримуються — спробуйте пост з одним зображенням або відео.",
-      }),
       "unsupported-media-host": t({
         en: "That post's media couldn't be verified as safe to fetch. Try a different post.",
         uk: "Не вдалося підтвердити, що медіа цього поста безпечне для завантаження. Спробуйте інший пост.",

@@ -1,16 +1,24 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { enrichVideoQualitySizes } from "./enrich-video-sizes";
-import type { ResolvedMedia } from "@/lib/server/resolved-media";
+import type { ResolvedMedia, ResolvedVideoQuality } from "@/lib/server/resolved-media";
 
-function videoMedia(qualities: ResolvedMedia["qualities"]): ResolvedMedia {
+function videoMedia(...qualitiesPerItem: ResolvedVideoQuality[][]): ResolvedMedia {
   return {
     platform: "x",
     postUrl: "https://x.com/someone/status/123",
     authorHandle: "someone",
-    kind: "video",
-    posterUrl: "https://pbs.twimg.com/poster.jpg",
-    qualities,
+    items: qualitiesPerItem.map((qualities) => ({
+      kind: "video",
+      posterUrl: "https://pbs.twimg.com/poster.jpg",
+      qualities,
+    })),
   };
+}
+
+function sizesMb(media: ResolvedMedia): number[][] {
+  return media.items.map((item) =>
+    item.kind === "video" ? item.qualities.map((quality) => quality.approxSizeMb) : [],
+  );
 }
 
 describe("enrichVideoQualitySizes", () => {
@@ -25,9 +33,7 @@ describe("enrichVideoQualitySizes", () => {
       platform: "x",
       postUrl: "https://x.com/someone/status/123",
       authorHandle: "someone",
-      kind: "image",
-      posterUrl: "https://pbs.twimg.com/a.jpg",
-      imageUrl: "https://pbs.twimg.com/a.jpg",
+      items: [{ kind: "image", imageUrl: "https://pbs.twimg.com/a.jpg" }],
     };
 
     expect(await enrichVideoQualitySizes(image)).toBe(image);
@@ -43,7 +49,7 @@ describe("enrichVideoQualitySizes", () => {
 
     const result = await enrichVideoQualitySizes(media);
 
-    expect(result.qualities?.[0].approxSizeMb).toBe(3.02);
+    expect(sizesMb(result)).toEqual([[3.02]]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -58,7 +64,7 @@ describe("enrichVideoQualitySizes", () => {
 
     const result = await enrichVideoQualitySizes(media);
 
-    expect(result.qualities?.[0].approxSizeMb).toBe(5);
+    expect(sizesMb(result)).toEqual([[5]]);
   });
 
   it("keeps the 0 estimate when the HEAD probe fails", async () => {
@@ -74,6 +80,19 @@ describe("enrichVideoQualitySizes", () => {
 
     const result = await enrichVideoQualitySizes(media);
 
-    expect(result.qualities?.[0].approxSizeMb).toBe(0);
+    expect(sizesMb(result)).toEqual([[0]]);
+  });
+
+  it("probes every video of a carousel that lacks a size", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, headers: new Headers({ "content-length": "5000000" }) })),
+    );
+    const media = videoMedia(
+      [{ label: "720p", width: 1280, height: 720, url: "https://video.twimg.com/a.mp4", approxSizeMb: 2 }],
+      [{ label: "720p", width: 1280, height: 720, url: "https://video.twimg.com/b.mp4", approxSizeMb: 0 }],
+    );
+
+    expect(sizesMb(await enrichVideoQualitySizes(media))).toEqual([[2], [5]]);
   });
 });
