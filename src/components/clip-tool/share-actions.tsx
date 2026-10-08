@@ -14,6 +14,7 @@ import { extensionFromMimeType } from "@/lib/media-filename";
 
 interface ShareActionsProps {
   media: ParsedMedia;
+  selectedItemIndex: number;
   selectedQualityIndex: number;
   blob: Blob | null;
   blobStatus: BlobStatus;
@@ -23,6 +24,7 @@ interface ShareActionsProps {
 
 export function ShareActions({
   media,
+  selectedItemIndex,
   selectedQualityIndex,
   blob,
   blobStatus,
@@ -30,8 +32,9 @@ export function ShareActions({
   onRetryBlob,
 }: ShareActionsProps) {
   const content = useIntlayer("share-actions");
-  const isVideo = media.kind === "video";
-  const activeQuality = isVideo ? media.qualities[selectedQualityIndex] : null;
+  const item = media.items[selectedItemIndex];
+  const isVideo = item.kind === "video";
+  const activeQuality = isVideo ? item.qualities[selectedQualityIndex] : null;
   // The real blob's Content-Type (once fetched) is authoritative — photos
   // can be PNG/WebP, not just JPEG — with a guessed fallback so the Share
   // feature-detection probe (see useNativeShare) has something to check
@@ -40,12 +43,15 @@ export function ShareActions({
   const mimeType = blob?.type || guessedMimeType;
   const extension = extensionFromMimeType(mimeType);
   const qualitySlug = isVideo ? (activeQuality?.label ?? "original") : "image";
-  const filenameBase = `clipbeam-${media.authorHandle}-${qualitySlug}`;
+  // A carousel's files are numbered so saving several doesn't collide.
+  const itemSlug = media.items.length > 1 ? `${selectedItemIndex + 1}-` : "";
+  const filenameBase = `clipbeam-${media.authorHandle}-${itemSlug}${qualitySlug}`;
   const filename = `${filenameBase}.${extension}`;
   // Download streams straight from our proxy as an attachment, so it starts
   // instantly and never waits on (or holds in memory) the blob below, which
   // only exists to feed Share.
-  const proxiedUrl = media.kind === "video" ? media.qualities[selectedQualityIndex].proxiedUrl : media.proxiedUrl;
+  const proxiedUrl =
+    item.kind === "video" ? item.qualities[selectedQualityIndex].proxiedUrl : item.proxiedUrl;
   const downloadHref = appendDownloadFilename(proxiedUrl, filenameBase);
 
   const { canShareFiles, share, shareError } = useNativeShare({
@@ -58,7 +64,7 @@ export function ShareActions({
   // the prefetch — on desktop it would be a large download nobody asked for.
   useEffect(() => {
     if (canShareFiles) onEnsureBlob();
-  }, [canShareFiles, blobStatus, selectedQualityIndex, media, onEnsureBlob]);
+  }, [canShareFiles, blobStatus, selectedItemIndex, selectedQualityIndex, media, onEnsureBlob]);
 
   const isPreparing = blobStatus === "idle" || blobStatus === "loading";
   const isError = canShareFiles && blobStatus === "error";

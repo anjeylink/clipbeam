@@ -3,7 +3,7 @@
 Instagram has no unauthenticated API for another account's public Post media either. The Graph API only covers your own or business accounts. `?__a=1` now needs a login. The web GraphQL endpoint (`/graphql/query` with a hardcoded `doc_id` and app id) works logged-out, but its tokens rotate and Meta throttles it hard from datacenter IPs. So we reuse the approach of ADR 0001:
 
 - **Embed first.** Fetch `https://www.instagram.com/p/<code>/embed/captioned/` with a neutral server User-Agent.
-  - Videos and carousels come as "rich" embeds. Their `PolarisEmbedSimple` init data has a JSON-encoded `contextJSON` whose `shortcode_media` holds `video_url`, `dimensions`, `display_url` and `owner.username`.
+  - Videos and carousels come as "rich" embeds. Their `PolarisEmbedSimple` init data has a JSON-encoded `contextJSON` whose `shortcode_media` holds `video_url`, `dimensions`, `display_url` and `owner.username`; a carousel (`GraphSidecar`) lists its items, each with the same media fields, under `edge_sidecar_to_children`.
   - Images come as "simple" embeds with `contextJSON: null`. Their media is the `<img class="EmbeddedMediaImage">` srcset (up to about 1440px).
   - The `Embed` element's `data-media-type` (`GraphImage` / `GraphVideo` / `GraphSidecar`) tells which case applies.
 - **Page fallback.** Only when the embed is inconclusive, fetch the post page with a Googlebot User-Agent. Its server-rendered `data-sjs` JSON has the same media shape as the Threads page (`media_type`, `video_versions`, `image_versions2`, `carousel_media`), so the two Platforms share one mapper.

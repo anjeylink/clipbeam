@@ -17,12 +17,14 @@ export interface ResolvedVideoQuality {
   approxSizeMb: number;
 }
 
+export type ResolvedMediaItem =
+  | { kind: "image"; imageUrl: string }
+  | { kind: "video"; posterUrl?: string; qualities: ResolvedVideoQuality[] };
+
 export interface ResolvedMedia {
   platform: Platform;
   postUrl: string;
   authorHandle: string;
-  kind: MediaKind;
-  posterUrl?: string;
-  imageUrl?: string;
-  qualities?: ResolvedVideoQuality[];
+  // In the Post's own order, never empty.
+  items: ResolvedMediaItem[];
 }

@@ -10,6 +10,7 @@ import type { Platform } from "@/lib/media-types";
 import { UrlInputForm } from "./url-input-form";
 import { MediaPreviewSkeleton } from "./media-preview-skeleton";
 import { MediaPreview } from "./media-preview";
+import { MediaItemPicker } from "./media-item-picker";
 import { QualityPicker } from "./quality-picker";
 import { ShareActions } from "./share-actions";
 
@@ -34,8 +35,10 @@ function ClipToolUrlSync({ onUrlParam }: { onUrlParam: (param: string | null) =>
 
 export function ClipTool() {
   const content = useIntlayer("clip-tool");
-  const { state, setUrl, submit, syncFromUrl, selectQuality, ensureBlob, retryBlob } =
+  const { state, setUrl, submit, syncFromUrl, selectItem, selectQuality, ensureBlob, retryBlob } =
     useClipTool();
+  const selectedItem =
+    state.status === "loaded" ? state.media.items[state.selectedItemIndex] : null;
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -83,7 +86,7 @@ export function ClipTool() {
 
           {state.status === "loading" ? <MediaPreviewSkeleton /> : null}
 
-          {state.status === "loaded" ? (
+          {state.status === "loaded" && selectedItem ? (
             <div className="flex flex-col gap-4">
               <h2
                 ref={resultHeadingRef}
@@ -93,18 +96,27 @@ export function ClipTool() {
                 {content.previewHeading}
               </h2>
               <MediaPreview
-                media={state.media}
+                item={selectedItem}
+                authorHandle={state.media.authorHandle}
                 selectedQualityIndex={state.selectedQualityIndex}
               />
-              {state.media.kind === "video" && state.media.qualities ? (
+              {state.media.items.length > 1 ? (
+                <MediaItemPicker
+                  items={state.media.items}
+                  selectedIndex={state.selectedItemIndex}
+                  onChange={selectItem}
+                />
+              ) : null}
+              {selectedItem.kind === "video" ? (
                 <QualityPicker
-                  qualities={state.media.qualities}
+                  qualities={selectedItem.qualities}
                   selectedIndex={state.selectedQualityIndex}
                   onChange={selectQuality}
                 />
               ) : null}
               <ShareActions
                 media={state.media}
+                selectedItemIndex={state.selectedItemIndex}
                 selectedQualityIndex={state.selectedQualityIndex}
                 blob={state.blob}
                 blobStatus={state.blobStatus}

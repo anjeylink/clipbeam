@@ -1,4 +1,8 @@
-import type { ResolvedMedia, ResolvedVideoQuality } from "@/lib/server/resolved-media";
+import type {
+  ResolvedMedia,
+  ResolvedMediaItem,
+  ResolvedVideoQuality,
+} from "@/lib/server/resolved-media";
 import { MediaResolutionError } from "@/lib/server/media-resolution-error";
 import { labelForDimensions } from "@/lib/server/video-quality-label";
 
@@ -55,13 +59,25 @@ function buildVideoQualities(detail: SyndicationMediaDetail): ResolvedVideoQuali
     .sort((a, b) => b.width - a.width);
 }
 
+// "video" and "animated_gif" both carry an mp4 in video_info.variants; one
+// with no mp4 variant at all has nothing to offer and is dropped.
+function mapMediaDetail(detail: SyndicationMediaDetail): ResolvedMediaItem | null {
+  if (detail.type === "photo") {
+    return { kind: "image", imageUrl: detail.media_url_https };
+  }
+  const qualities = buildVideoQualities(detail);
+  if (qualities.length === 0) return null;
+  return { kind: "video", posterUrl: detail.media_url_https, qualities };
+}
+
 /**
  * Maps a raw JSON response from the syndication endpoint to our internal
- * ResolvedMedia shape. Pure/no I/O — throws MediaResolutionError for
- * unavailable/tombstoned posts, posts with no media, or multi-photo posts
- * (out of scope for this pass). Animated GIFs are treated identically to
- * videos: X delivers them as an mp4 entry in video_info.variants, so they
- * flow through the same mapping as a regular video at no extra cost.
+ * ResolvedMedia shape, one item per attached photo or video in the post's
+ * own order. Pure/no I/O — throws MediaResolutionError for
+ * unavailable/tombstoned posts and posts with no media. Animated GIFs are
+ * treated identically to videos: X delivers them as an mp4 entry in
+ * video_info.variants, so they flow through the same mapping as a regular
+ * video at no extra cost.
  */
 export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMedia {
   const parsed = tweet as SyndicationTweet;
@@ -75,39 +91,12 @@ export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMe
     throw new MediaResolutionError("unsupported-post");
   }
 
-  const mediaDetails = parsed.mediaDetails ?? [];
-  if (mediaDetails.length === 0) {
-    throw new MediaResolutionError("no-media");
-  }
-  if (mediaDetails.length > 1) {
-    throw new MediaResolutionError("multi-media-unsupported");
-  }
-
-  const detail = mediaDetails[0];
-
-  if (detail.type === "photo") {
-    return {
-      platform: "x",
-      postUrl,
-      authorHandle,
-      kind: "image",
-      posterUrl: detail.media_url_https,
-      imageUrl: detail.media_url_https,
-    };
-  }
-
-  // "video" and "animated_gif" both carry an mp4 in video_info.variants.
-  const qualities = buildVideoQualities(detail);
-  if (qualities.length === 0) {
+  const items = (parsed.mediaDetails ?? [])
+    .map(mapMediaDetail)
+    .filter((item) => item !== null);
+  if (items.length === 0) {
     throw new MediaResolutionError("no-media");
   }
 
-  return {
-    platform: "x",
-    postUrl,
-    authorHandle,
-    kind: "video",
-    posterUrl: detail.media_url_https,
-    qualities,
-  };
+  return { platform: "x", postUrl, authorHandle, items };
 }

@@ -1,6 +1,12 @@
-import type { MediaKind, Platform, VideoQualityOption, ParsedMedia } from "@/lib/media-types";
+import type {
+  MediaItem,
+  MediaKind,
+  Platform,
+  VideoQualityOption,
+  ParsedMedia,
+} from "@/lib/media-types";
 
-export type { MediaKind, Platform, VideoQualityOption, ParsedMedia };
+export type { MediaItem, MediaKind, Platform, VideoQualityOption, ParsedMedia };
 
 // Matches x.com/twitter.com/mobile.twitter.com status links. Scheme is
 // optional (people paste bare "x.com/..."), the legacy plural "statuses"
@@ -133,7 +139,6 @@ export type ParsePostUrlErrorCode =
   | "not-found"
   | "unsupported-post"
   | "no-media"
-  | "multi-media-unsupported"
   | "unsupported-media-host"
   | "rate-limited"
   | "unknown";
@@ -143,7 +148,6 @@ const PARSE_POST_URL_ERROR_CODES: readonly ParsePostUrlErrorCode[] = [
   "not-found",
   "unsupported-post",
   "no-media",
-  "multi-media-unsupported",
   "unsupported-media-host",
   "rate-limited",
   "unknown",

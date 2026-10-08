@@ -25,29 +25,35 @@ describe("mapInstagramPageToMedia", () => {
     const media = mapInstagramPageToMedia(fixture("video"), "DdhFkS7KGkZ");
     expect(media).toMatchObject({
       platform: "instagram",
-      kind: "video",
       authorHandle: "ravens",
       postUrl: "https://www.instagram.com/p/DdhFkS7KGkZ/",
+      items: [
+        {
+          kind: "video",
+          posterUrl: expect.stringMatching(/^https:\/\/[^/]+\.(?:fbcdn\.net|cdninstagram\.com)\//),
+          qualities: [{ label: "720p", width: 720, height: 1280 }],
+        },
+      ],
     });
-    expect(media.posterUrl).toMatch(/^https:\/\/[^/]+\.(?:fbcdn\.net|cdninstagram\.com)\//);
-    expect(media.qualities).toEqual([
-      expect.objectContaining({ label: "720p", width: 720, height: 1280 }),
-    ]);
+    expect(media.items).toHaveLength(1);
   });
 
   it("maps an image to the post's own full-size candidate, not the timeline thumbnail", () => {
     // The fixture's first data-sjs block is the author's timeline, listing
     // the same post (same code and media_type) with only a 640px display_uri.
     const media = mapInstagramPageToMedia(fixture("image"), "Ddbo7s0lzoy");
-    expect(media).toMatchObject({ platform: "instagram", kind: "image", authorHandle: "nasa" });
-    expect(media.imageUrl).toMatch(/815798049_/);
-    expect(media.imageUrl).not.toContain("s640x640");
+    expect(media).toMatchObject({ platform: "instagram", authorHandle: "nasa" });
+    expect(media.items).toEqual([
+      { kind: "image", imageUrl: expect.stringMatching(/815798049_(?!.*s640x640)/) },
+    ]);
   });
 
-  it("rejects a carousel as multi-media-unsupported", () => {
-    expect(errorCode(() => mapInstagramPageToMedia(fixture("carousel"), "DdZMsPElzSl"))).toBe(
-      "multi-media-unsupported",
-    );
+  it("maps a carousel to one item per slide, in order", () => {
+    const media = mapInstagramPageToMedia(fixture("carousel"), "DdZMsPElzSl");
+    expect(media.items).toEqual([
+      { kind: "image", imageUrl: expect.stringContaining("/814507513_") },
+      { kind: "image", imageUrl: expect.stringContaining("/813698311_") },
+    ]);
   });
 
   it("maps a page without the requested post to not-found", () => {

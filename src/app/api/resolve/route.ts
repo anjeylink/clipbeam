@@ -19,7 +19,6 @@ const STATUS_BY_CODE: Record<ParsePostUrlErrorCode, number> = {
   unknown: 502,
   "unsupported-post": 422,
   "no-media": 422,
-  "multi-media-unsupported": 422,
   "unsupported-media-host": 422,
 };
 

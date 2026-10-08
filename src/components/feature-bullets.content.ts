@@ -17,8 +17,8 @@ const featureBulletsContent = {
         uk: "Нічого не зберігається після того, як ви покинете сторінку",
       }),
       t({
-        en: "One image or video per link for now",
-        uk: "Наразі одне зображення чи відео на посилання",
+        en: "Posts with several photos or videos: pick the one you want",
+        uk: "Пости з кількома фото чи відео: оберіть потрібне",
       }),
     ],
   },

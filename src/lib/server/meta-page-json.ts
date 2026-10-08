@@ -1,4 +1,4 @@
-import type { Platform, ResolvedMedia } from "@/lib/server/resolved-media";
+import type { Platform, ResolvedMedia, ResolvedMediaItem } from "@/lib/server/resolved-media";
 import { MediaResolutionError } from "@/lib/server/media-resolution-error";
 import { labelForDimensions } from "@/lib/server/video-quality-label";
 
@@ -19,15 +19,21 @@ interface MetaImageCandidate {
   url: string;
 }
 
-export interface MetaPost {
-  code: string;
-  media_type: number;
-  user?: { username?: string };
+// The media fields a post and each item of its carousel have in common.
+interface MetaMedia {
+  // Threads leaves this null on carousel items.
+  media_type?: number | null;
   original_width?: number;
   original_height?: number;
   video_versions?: { url: string }[] | null;
   image_versions2?: { candidates?: MetaImageCandidate[] } | null;
-  carousel_media?: unknown[] | null;
+}
+
+export interface MetaPost extends MetaMedia {
+  code: string;
+  media_type: number;
+  user?: { username?: string };
+  carousel_media?: MetaMedia[] | null;
   // Threads only: a text post whose only content is a link to an Instagram
   // post carries that post's media here — it's what Threads plays inline in
   // place of a plain link card.
@@ -96,14 +102,60 @@ export function findMetaPost(
 
 // Instagram's candidates carry no width, in which case the first (largest)
 // one wins — the sort is stable.
-function largestImage(post: MetaPost): MetaImageCandidate | undefined {
-  const candidates = post.image_versions2?.candidates ?? [];
+function largestImage(media: MetaMedia): MetaImageCandidate | undefined {
+  const candidates = media.image_versions2?.candidates ?? [];
   return [...candidates].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0];
 }
 
+function mapVideo(media: MetaMedia): ResolvedMediaItem | null {
+  const videoUrl = media.video_versions?.[0]?.url;
+  if (!videoUrl) return null;
+  const width = media.original_width ?? 0;
+  const height = media.original_height ?? 0;
+  return {
+    kind: "video",
+    posterUrl: largestImage(media)?.url,
+    qualities: [
+      {
+        label: width > 0 && height > 0 ? labelForDimensions(width, height) : null,
+        width,
+        height,
+        url: videoUrl,
+        approxSizeMb: 0,
+      },
+    ],
+  };
+}
+
+function mapImage(media: MetaMedia): ResolvedMediaItem | null {
+  const imageUrl = largestImage(media)?.url;
+  return imageUrl ? { kind: "image", imageUrl } : null;
+}
+
+// A carousel item is a video when it has one: Threads gives its items no
+// media_type, and a video also carries image candidates (its poster).
+function mapCarouselItem(media: MetaMedia): ResolvedMediaItem | null {
+  return mapVideo(media) ?? mapImage(media);
+}
+
+function mapMetaPostItems(post: MetaPost): ResolvedMediaItem[] | null {
+  switch (post.media_type) {
+    case MEDIA_TYPE_CAROUSEL:
+      return (post.carousel_media ?? []).map(mapCarouselItem).filter((item) => item !== null);
+    case MEDIA_TYPE_VIDEO:
+      return [mapVideo(post)].filter((item) => item !== null);
+    case MEDIA_TYPE_IMAGE:
+      return [mapImage(post)].filter((item) => item !== null);
+    default:
+      return null;
+  }
+}
+
 /**
- * Maps a post's own media to ResolvedMedia, or returns null when it has none
- * (a text post, or a media_type we don't recognise). Throws for a carousel.
+ * Maps a post's own media to ResolvedMedia, one item per carousel entry, or
+ * returns null when it has none (a text post, or a media_type we don't
+ * recognise). Throws no-media for a media post none of whose media can be
+ * read.
  */
 export function mapMetaPostMedia(
   post: MetaPost,
@@ -111,42 +163,10 @@ export function mapMetaPostMedia(
   postUrl: string,
   authorHandle: string,
 ): ResolvedMedia | null {
-  if (post.media_type === MEDIA_TYPE_CAROUSEL) {
-    throw new MediaResolutionError("multi-media-unsupported");
+  const items = mapMetaPostItems(post);
+  if (!items) return null;
+  if (items.length === 0) {
+    throw new MediaResolutionError("no-media");
   }
-
-  if (post.media_type === MEDIA_TYPE_VIDEO) {
-    const videoUrl = post.video_versions?.[0]?.url;
-    if (!videoUrl) {
-      throw new MediaResolutionError("no-media");
-    }
-    const width = post.original_width ?? 0;
-    const height = post.original_height ?? 0;
-    return {
-      platform,
-      postUrl,
-      authorHandle,
-      kind: "video",
-      posterUrl: largestImage(post)?.url,
-      qualities: [
-        {
-          label: width > 0 && height > 0 ? labelForDimensions(width, height) : null,
-          width,
-          height,
-          url: videoUrl,
-          approxSizeMb: 0,
-        },
-      ],
-    };
-  }
-
-  if (post.media_type === MEDIA_TYPE_IMAGE) {
-    const imageUrl = largestImage(post)?.url;
-    if (!imageUrl) {
-      throw new MediaResolutionError("no-media");
-    }
-    return { platform, postUrl, authorHandle, kind: "image", imageUrl };
-  }
-
-  return null;
+  return { platform, postUrl, authorHandle, items };
 }

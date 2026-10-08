@@ -15,15 +15,11 @@ export interface VideoQualityOption {
   proxiedUrl: string;
 }
 
-// True discriminated union: image and video no longer share optional
-// imageUrl?/qualities? fields, so reading either no longer needs a `!`
-// non-null assertion once `kind` is narrowed.
-export type ParsedMedia =
+// One image or video of a Post. A true discriminated union, so reading an
+// image's URLs or a video's qualities needs no `!` once `kind` is narrowed.
+export type MediaItem =
   | {
-      platform: Platform;
       kind: "image";
-      postUrl: string;
-      authorHandle: string;
       // Raw pbs.twimg.com URL for X, deliberately unproxied: pbs allows
       // hotlinking (unlike video.twimg.com), so <img src> skips our server
       // round-trip. Proxied for Threads and Instagram, whose URLs are
@@ -32,11 +28,17 @@ export type ParsedMedia =
       proxiedUrl: string;
     }
   | {
-      platform: Platform;
       kind: "video";
-      postUrl: string;
-      authorHandle: string;
       // Absent when the Platform gave no poster (Threads embeds).
       posterUrl?: string;
       qualities: VideoQualityOption[];
     };
+
+export interface ParsedMedia {
+  platform: Platform;
+  postUrl: string;
+  authorHandle: string;
+  // In the Post's own order, never empty: one item for a plain Post, several
+  // for a carousel.
+  items: MediaItem[];
+}

@@ -208,17 +208,22 @@ describe("parsePostUrl", () => {
       vi.fn(async () => ({
         ok: true,
         json: async () => ({
+          platform: "x",
           postUrl: "https://x.com/someone/status/2",
           authorHandle: "someone",
-          kind: "image",
-          posterUrl: "/mock/sample-image.jpg",
-          imageUrl: "/mock/sample-image.jpg",
+          items: [
+            {
+              kind: "image",
+              previewUrl: "/mock/sample-image.jpg",
+              proxiedUrl: "/api/download?url=%2Fmock%2Fsample-image.jpg",
+            },
+          ],
         }),
       })),
     );
 
     const media = await parsePostUrl("https://x.com/someone/status/2");
-    expect(media.kind).toBe("image");
+    expect(media.items[0].kind).toBe("image");
     expect(media.authorHandle).toBe("someone");
   });
 
