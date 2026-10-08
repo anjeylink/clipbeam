@@ -63,10 +63,28 @@ describe("mapThreadsPageToMedia", () => {
     expect(soleQuality(reply).label).toBe("720p");
   });
 
-  it("maps a text post quoting a video to no-media, not the quoted video", () => {
-    expect(errorCode(() => mapThreadsPageToMedia(fixture("quote-of-video"), "DdHp9gDkmnV"))).toBe(
-      "no-media",
+  it("maps a text post quoting a video to the quoted video, credited to its author", () => {
+    // The fixture's quoter and quoted author are both "instagram"; renaming
+    // the quoted one shows which handle is read.
+    const html = fixture("quote-of-video").replace(
+      '"original_height":1280,"user":{"username":"instagram"}',
+      '"original_height":1280,"user":{"username":"benshelton"}',
     );
+    const media = mapThreadsPageToMedia(html, "DdHp9gDkmnV");
+    expect(media).toMatchObject({
+      platform: "threads",
+      authorHandle: "benshelton",
+      postUrl: "https://www.threads.com/@instagram/post/DdHp9gDkmnV",
+    });
+    expect(soleQuality(media)).toMatchObject({ label: "720p", width: 720, height: 1280 });
+  });
+
+  it("maps a text post quoting a text post to no-media", () => {
+    const html = fixture("quote-of-video").replace(
+      '"quoted_post":{"code":"DcjXpnRCYOo","media_type":2',
+      '"quoted_post":{"code":"DcjXpnRCYOo","media_type":19',
+    );
+    expect(errorCode(() => mapThreadsPageToMedia(html, "DdHp9gDkmnV"))).toBe("no-media");
   });
 
   it("maps a text post linking to an Instagram reel to the reel's video, credited to its author", () => {

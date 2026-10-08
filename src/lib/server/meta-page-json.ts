@@ -37,7 +37,11 @@ export interface MetaPost extends MetaMedia {
   // Threads only: a text post whose only content is a link to an Instagram
   // post carries that post's media here — it's what Threads plays inline in
   // place of a plain link card.
-  text_post_app_info?: { linked_inline_media?: MetaPost | null } | null;
+  // A Quote Post carries the post it quotes under share_info.
+  text_post_app_info?: {
+    linked_inline_media?: MetaPost | null;
+    share_info?: { quoted_post?: MetaPost | null } | null;
+  } | null;
 }
 
 export interface FindMetaPostOptions {

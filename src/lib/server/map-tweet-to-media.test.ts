@@ -159,4 +159,51 @@ describe("mapTweetJsonToMedia", () => {
     const media = mapTweetJsonToMedia(gif, POST_URL);
     expect(videoQualities(media)).toHaveLength(1);
   });
+
+  describe("a Quote Post", () => {
+    const quotedPhoto = {
+      user: { screen_name: "original" },
+      mediaDetails: [{ type: "photo", media_url_https: "https://pbs.twimg.com/quoted.jpg" }],
+    };
+
+    it("maps a text-only quote to the quoted post's media, credited to its author", () => {
+      const quote = {
+        __typename: "Tweet",
+        user: { screen_name: "quoter" },
+        quoted_tweet: quotedPhoto,
+      };
+      expect(mapTweetJsonToMedia(quote, POST_URL)).toEqual({
+        platform: "x",
+        postUrl: POST_URL,
+        authorHandle: "original",
+        items: [{ kind: "image", imageUrl: "https://pbs.twimg.com/quoted.jpg" }],
+      });
+    });
+
+    it("prefers the quoting post's own media over the quoted post's", () => {
+      const quote = {
+        __typename: "Tweet",
+        user: { screen_name: "quoter" },
+        mediaDetails: [{ type: "photo", media_url_https: "https://pbs.twimg.com/own.jpg" }],
+        quoted_tweet: quotedPhoto,
+      };
+      expect(mapTweetJsonToMedia(quote, POST_URL)).toEqual({
+        platform: "x",
+        postUrl: POST_URL,
+        authorHandle: "quoter",
+        items: [{ kind: "image", imageUrl: "https://pbs.twimg.com/own.jpg" }],
+      });
+    });
+
+    it("throws no-media when the quoted post has no media either", () => {
+      const quote = {
+        __typename: "Tweet",
+        user: { screen_name: "quoter" },
+        quoted_tweet: { user: { screen_name: "original" } },
+      };
+      expect(() => mapTweetJsonToMedia(quote, POST_URL)).toThrow(
+        expect.objectContaining({ code: "no-media" }),
+      );
+    });
+  });
 });
