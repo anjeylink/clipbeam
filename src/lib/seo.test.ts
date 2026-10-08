@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   absoluteUrl,
+  breadcrumbStructuredData,
   homeStructuredData,
   localeAlternates,
   pageMetadata,
@@ -85,6 +86,31 @@ describe("homeStructuredData", () => {
       "@type": "FAQPage",
       mainEntity: [
         { "@type": "Question", name: "Q?", acceptedAnswer: { "@type": "Answer", text: "A." } },
+      ],
+    });
+  });
+});
+
+describe("breadcrumbStructuredData", () => {
+  it("numbers the trail from the root with absolute locale URLs", () => {
+    const data = breadcrumbStructuredData({
+      locale: "uk",
+      crumbs: [
+        { name: "Home", path: "/" },
+        { name: "Threads", path: "/threads-video-downloader" },
+      ],
+    });
+
+    expect(data["@graph"][0]).toEqual({
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "http://localhost:3000/uk" },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Threads",
+          item: "http://localhost:3000/uk/threads-video-downloader",
+        },
       ],
     });
   });

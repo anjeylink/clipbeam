@@ -52,10 +52,141 @@ test("the sitemap lists every page in both locales with hreflang", async ({
   request,
 }) => {
   const body = await (await request.get("/sitemap.xml")).text();
-  for (const path of ["/uk", "/terms", "/uk/terms", "/privacy", "/uk/dmca"]) {
+  for (const path of [
+    "/uk",
+    "/terms",
+    "/uk/terms",
+    "/privacy",
+    "/uk/dmca",
+    "/instagram-video-downloader",
+    "/uk/twitter-video-downloader",
+    "/threads-video-downloader",
+  ]) {
     expect(body).toMatch(new RegExp(`<loc>[^<]+${path}</loc>`));
   }
   expect(body).toContain('hreflang="x-default"');
+});
+
+test("every sitemap entry carries the date its page last changed", async ({
+  request,
+}) => {
+  const body = await (await request.get("/sitemap.xml")).text();
+  const urls = body.match(/<url>[\s\S]*?<\/url>/g)!;
+  expect(urls).toHaveLength(14);
+  for (const url of urls) {
+    expect(url).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}/);
+  }
+  // A fixed date, not the time of the request.
+  expect(body).toMatch(/\/terms<\/loc>[\s\S]*?<lastmod>2026-09-16/);
+});
+
+const PLATFORM_PAGES = [
+  { slug: "instagram-video-downloader", heading: /Instagram/, breadcrumb: /Instagram/ },
+  { slug: "twitter-video-downloader", heading: /Twitter \(X\)/, breadcrumb: /Twitter/ },
+  { slug: "threads-video-downloader", heading: /Threads/, breadcrumb: /Threads/ },
+];
+
+for (const { slug, heading, breadcrumb } of PLATFORM_PAGES) {
+  test(`/${slug} is a download page for its Platform in both locales`, async ({
+    page,
+  }) => {
+    for (const [prefix, download] of [
+      ["", /^Download /],
+      ["/uk", /^Завантажити /],
+    ] as const) {
+      const path = `${prefix}/${slug}`;
+      await page.goto(path);
+
+      await expect(page, path).toHaveTitle(download);
+      await expect(page, path).toHaveTitle(heading);
+      const h1 = page.getByRole("heading", { level: 1 });
+      await expect(h1, path).toHaveText(download);
+      await expect(h1, path).toHaveText(heading);
+      await expect(page.locator('head meta[name="description"]'), path).toHaveAttribute(
+        "content",
+        /.{50,}/,
+      );
+
+      const canonical = page.locator('head link[rel="canonical"]');
+      expect(pathOf(await canonical.getAttribute("href")), path).toBe(path);
+      expect(await hreflangPaths(page), path).toEqual({
+        en: `/${slug}`,
+        uk: `/uk/${slug}`,
+        "x-default": `/${slug}`,
+      });
+
+      const jsonLd = JSON.parse(
+        (await page.locator('script[type="application/ld+json"]').textContent())!,
+      );
+      const trail = jsonLd["@graph"].find(
+        (node: { "@type": string }) => node["@type"] === "BreadcrumbList",
+      ).itemListElement;
+      expect(trail.map((item: { item: string }) => pathOf(item.item)), path).toEqual([
+        prefix || "/",
+        path,
+      ]);
+      expect(trail[1].name, path).toMatch(breadcrumb);
+
+      // The page is the tool, not a signpost to the home page.
+      await expect(page.getByRole("textbox"), path).toBeVisible();
+    }
+  });
+}
+
+test("the landing pages don't share a title or heading", async ({ page }) => {
+  const titles = new Set<string>();
+  const headings = new Set<string>();
+  for (const { slug } of PLATFORM_PAGES) {
+    await page.goto(`/${slug}`);
+    titles.add(await page.title());
+    headings.add(await page.getByRole("heading", { level: 1 }).innerText());
+  }
+  expect(titles.size).toBe(PLATFORM_PAGES.length);
+  expect(headings.size).toBe(PLATFORM_PAGES.length);
+});
+
+// English only: under `next dev` a client-side navigation re-renders the
+// page without the locale layout, so server components fall back to English
+// (the production build serves the prerendered Ukrainian page).
+test("the home page links to every Platform's landing page, which link to each other", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Download by platform" });
+  await expect(nav.getByRole("link")).toHaveCount(3);
+
+  await nav.getByRole("link", { name: /Threads/ }).click();
+  await expect(page).toHaveURL(/\/threads-video-downloader$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Threads/);
+
+  const others = page.getByRole("navigation", { name: "Download by platform" });
+  await expect(others.getByRole("link")).toHaveCount(2);
+  await expect(others.getByRole("link", { name: /Threads/ })).toHaveCount(0);
+
+  await page
+    .getByRole("navigation", { name: "Breadcrumb" })
+    .getByRole("link", { name: "Home" })
+    .click();
+  await expect(page).toHaveURL(/^[^?]+:\d+\/$/);
+});
+
+test("an unknown page 404s rather than rendering a landing page", async ({
+  request,
+}) => {
+  for (const path of ["/tiktok-video-downloader", "/uk/tiktok-video-downloader"]) {
+    expect((await request.get(path)).status(), path).toBe(404);
+  }
+});
+
+test("the home page says download as well as share", async ({ page }) => {
+  for (const [path, download] of [
+    ["/", /Download/],
+    ["/uk", /авантаж/],
+  ] as const) {
+    await page.goto(path);
+    await expect(page, path).toHaveTitle(download);
+    await expect(page.getByRole("heading", { level: 1 }), path).toHaveText(download);
+  }
 });
 
 test("a page canonicalizes to itself without the query and lists its translations", async ({

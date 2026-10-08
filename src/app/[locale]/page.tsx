@@ -5,6 +5,7 @@ import { HeroSection } from "@/components/hero-section";
 import { HowItWorks } from "@/components/how-it-works";
 import { FeatureBullets } from "@/components/feature-bullets";
 import { Faq } from "@/components/faq";
+import { PlatformLinks } from "@/components/platform-links";
 import { SiteFooter } from "@/components/site-footer";
 import { homeStructuredData, pageMetadata, serializeJsonLd } from "@/lib/seo";
 
@@ -32,6 +33,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   const { description } = getIntlayer("page-metadata", locale as Locale);
   const { items } = getIntlayer("faq", locale as Locale);
+  const hero = getIntlayer("hero-section", locale as Locale);
   const structuredData = homeStructuredData({
     locale: locale as Locale,
     description,
@@ -46,9 +48,10 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
       />
       <SiteHeader />
       <main className="flex flex-1 flex-col">
-        <HeroSection />
+        <HeroSection heading={hero.heading} subtext={hero.subtext} />
         <HowItWorks />
         <FeatureBullets />
+        <PlatformLinks />
         <Faq />
       </main>
       <SiteFooter />

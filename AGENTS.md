@@ -20,6 +20,10 @@ All user-facing text is translatable via Intlayer — never hardcode a string. D
 
 No CI and no pre-commit hooks exist in this repo — nothing checks your work automatically. Before calling a change done, run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm test:e2e` yourself. Always run `pnpm typecheck`, not bare `tsc --noEmit` — the script runs `next typegen` first to regenerate the route types the check depends on.
 
+## Sitemap dates
+
+Each sitemap entry's `lastModified` is a hand-maintained date, and nothing updates or checks it. When you change a page's visible copy or metadata, set that page's date to the day of the change: `PAGES` in `src/app/sitemap.ts` for the home and legal pages, `PLATFORM_PAGES` in `src/lib/platform-pages.ts` for the Platform landing pages. A shared component's copy (FAQ, how-it-works, hero) counts for every page that renders it. Never use `new Date()` — a date that moves on every build teaches crawlers to ignore it. A legal page's date must match its visible "Last updated" line.
+
 ## Media URLs
 
 `toClientMedia` (`src/lib/server/to-client-media.ts`) is the only place that turns raw upstream CDN URLs into what the client receives — it enforces the same host allowlist `/api/download` uses (checked against the post's own Platform), so a URL that would 403 later is rejected here first. Route new media through it rather than handing upstream URLs to the client directly. The one deliberate exception: an X image's `previewUrl` and video `posterUrl` stay raw (pbs.twimg.com allows hotlinking); everything else — `proxiedUrl`, all video qualities, and every Instagram and Threads URL (signed, expiring) — is proxied.
