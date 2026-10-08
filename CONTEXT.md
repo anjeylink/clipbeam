@@ -12,6 +12,10 @@ _Avoid_: source, network, provider
 A single public item on a Platform (an X tweet, an Instagram post or Reel, a Threads post) that ClipBeam resolves to one or more Media Items. Instagram Stories and Highlights are not Posts.
 _Avoid_: tweet (except when talking about X specifically), thread, reel (as a separate concept — a Reel is just an Instagram Post whose media is a video)
 
+**Quote Post**:
+A Post that embeds another Post beneath its own content (an X quote, a Threads quote). When it has no media of its own, ClipBeam resolves the quoted Post's Media Items instead, credited to the quoted Post's author. Instagram has none.
+_Avoid_: repost, retweet (a plain repost has no link of its own to paste)
+
 **Media Item**:
 One image or video of a Post. Most Posts have one; a carousel (an X post with several attachments, an Instagram or Threads carousel) has several, kept in the Post's own order. The user picks one Media Item at a time to preview, download or share.
 _Avoid_: slide, attachment, asset

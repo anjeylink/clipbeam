@@ -22,10 +22,16 @@ interface SyndicationMediaDetail {
   };
 }
 
-interface SyndicationTweet {
-  __typename?: string;
+interface SyndicationTweetContent {
   user?: { screen_name?: string };
   mediaDetails?: SyndicationMediaDetail[];
+}
+
+interface SyndicationTweet extends SyndicationTweetContent {
+  __typename?: string;
+  // The post a Quote Post quotes; its media is not repeated in the quoting
+  // post's own mediaDetails.
+  quoted_tweet?: SyndicationTweetContent;
 }
 
 const RESOLUTION_PATTERN = /(\d+)x(\d+)/;
@@ -70,6 +76,10 @@ function mapMediaDetail(detail: SyndicationMediaDetail): ResolvedMediaItem | nul
   return { kind: "video", posterUrl: detail.media_url_https, qualities };
 }
 
+function mapMediaDetails(content: SyndicationTweetContent | undefined): ResolvedMediaItem[] {
+  return (content?.mediaDetails ?? []).map(mapMediaDetail).filter((item) => item !== null);
+}
+
 /**
  * Maps a raw JSON response from the syndication endpoint to our internal
  * ResolvedMedia shape, one item per attached photo or video in the post's
@@ -77,7 +87,9 @@ function mapMediaDetail(detail: SyndicationMediaDetail): ResolvedMediaItem | nul
  * unavailable/tombstoned posts and posts with no media. Animated GIFs are
  * treated identically to videos: X delivers them as an mp4 entry in
  * video_info.variants, so they flow through the same mapping as a regular
- * video at no extra cost.
+ * video at no extra cost. A Quote Post with no media of its own maps to the
+ * quoted post's media, credited to the quoted post's author (see
+ * docs/adr/0005-quote-post-media-fallback.md).
  */
 export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMedia {
   const parsed = tweet as SyndicationTweet;
@@ -91,12 +103,19 @@ export function mapTweetJsonToMedia(tweet: unknown, postUrl: string): ResolvedMe
     throw new MediaResolutionError("unsupported-post");
   }
 
-  const items = (parsed.mediaDetails ?? [])
-    .map(mapMediaDetail)
-    .filter((item) => item !== null);
-  if (items.length === 0) {
-    throw new MediaResolutionError("no-media");
+  const items = mapMediaDetails(parsed);
+  if (items.length > 0) {
+    return { platform: "x", postUrl, authorHandle, items };
   }
 
-  return { platform: "x", postUrl, authorHandle, items };
+  const quotedItems = mapMediaDetails(parsed.quoted_tweet);
+  if (quotedItems.length === 0) {
+    throw new MediaResolutionError("no-media");
+  }
+  return {
+    platform: "x",
+    postUrl,
+    authorHandle: parsed.quoted_tweet?.user?.screen_name ?? authorHandle,
+    items: quotedItems,
+  };
 }

@@ -75,10 +75,53 @@ describe("mapThreadsEmbedToMedia", () => {
     expect(media?.items).toHaveLength(1);
   });
 
-  it("ignores a quoted post's media — a text post quoting a video is inconclusive", () => {
-    // The quoted post is rendered as another "OuterContainerFull" block inside
-    // the target; its video and author must never be attributed to the quoter.
-    expect(mapThreadsEmbedToMedia(fixture("quote-of-video"), "DdHp9gDkmnV")).toBeNull();
+  describe("a Quote Post", () => {
+    const QUOTE_CONTAINER = '<div class="QuotePostContainer">';
+    const OWN_IMAGE =
+      '<div class="SoloMediaContainer"><img src="https://scontent.cdninstagram.com/own.jpg" /></div>';
+    // The fixture's quoter and quoted author are both "instagram"; renaming
+    // the quoted one (the last author link) shows which handle is read.
+    function quoteFixture(): string {
+      const html = fixture("quote-of-video");
+      const authorLink = 'class="HeaderLink"><span>instagram</span>';
+      const last = html.lastIndexOf(authorLink);
+      return (
+        html.slice(0, last) +
+        'class="HeaderLink"><span>benshelton</span>' +
+        html.slice(last + authorLink.length)
+      );
+    }
+
+    it("maps a text post quoting a video to the quoted video, credited to its author", () => {
+      const media = mapThreadsEmbedToMedia(quoteFixture(), "DdHp9gDkmnV");
+      expect(media).toMatchObject({
+        platform: "threads",
+        authorHandle: "benshelton",
+        postUrl: "https://www.threads.com/@instagram/post/DdHp9gDkmnV",
+        items: [{ kind: "video" }],
+      });
+      expect(soleUrl(media)).toMatch(/^https:\/\/[^/]+\.fbcdn\.net\//);
+    });
+
+    it("prefers the quoting post's own media over the quoted post's", () => {
+      const html = quoteFixture().replace(QUOTE_CONTAINER, OWN_IMAGE + QUOTE_CONTAINER);
+      const media = mapThreadsEmbedToMedia(html, "DdHp9gDkmnV");
+      expect(media).toMatchObject({ authorHandle: "instagram", items: [{ kind: "image" }] });
+      expect(soleUrl(media)).toBe("https://scontent.cdninstagram.com/own.jpg");
+    });
+
+    it("is inconclusive when media follows the quoted post, rather than guessing whose it is", () => {
+      const html = quoteFixture().replace(
+        '<div class="PostDateContainer">',
+        OWN_IMAGE + '<div class="PostDateContainer">',
+      );
+      expect(mapThreadsEmbedToMedia(html, "DdHp9gDkmnV")).toBeNull();
+    });
+
+    it("is inconclusive when the quoted post has no media either", () => {
+      const html = quoteFixture().replace(/<video\b[\s\S]*?<\/video>/, "");
+      expect(mapThreadsEmbedToMedia(html, "DdHp9gDkmnV")).toBeNull();
+    });
   });
 
   it("maps a carousel to one item per slide, videos and images in their own order", () => {

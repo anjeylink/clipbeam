@@ -275,15 +275,22 @@ describe("GET /api/resolve", () => {
       expect(calls[1].userAgent).toMatch(/Googlebot/);
     });
 
-    it("never returns a quoted post's video for a text post that quotes it", async () => {
-      stubPages({
+    it("resolves a text post quoting a video to the quoted video, from the embed alone", async () => {
+      const calls = stubPages({
         [EMBED("DdHp9gDkmnV")]: { html: threadsFixture("embed-quote-of-video") },
-        [PAGE("DdHp9gDkmnV")]: { html: threadsFixture("page-quote-of-video") },
       });
 
       const res = await GET(makeRequest("https://www.threads.com/@instagram/post/DdHp9gDkmnV"));
-      expect(res.status).toBe(422);
-      expect((await res.json()).code).toBe("no-media");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({
+        platform: "threads",
+        authorHandle: "instagram",
+        postUrl: "https://www.threads.com/@instagram/post/DdHp9gDkmnV",
+        items: [
+          { kind: "video", qualities: [{ proxiedUrl: expect.stringMatching(/^\/api\/download\?url=/) }] },
+        ],
+      });
+      expect(calls.map((c) => c.url)).toEqual([EMBED("DdHp9gDkmnV")]);
     });
 
     it("resolves a carousel from the embed alone, every item sized and proxied", async () => {

@@ -24,12 +24,15 @@ export function mapThreadsPageToMedia(html: string, shortcode: string): Resolved
   const media = mapMetaPostMedia(post, "threads", postUrl, authorHandle);
   if (media) return media;
 
-  // Credited to the linked post's author, who made the media, not to the
-  // Threads user who shared the link.
-  const linked = post.text_post_app_info?.linked_inline_media;
-  const linkedMedia =
-    linked && mapMetaPostMedia(linked, "threads", postUrl, linked.user?.username ?? authorHandle);
-  if (linkedMedia) return linkedMedia;
+  // A post with no media of its own may still carry another post's: an
+  // Instagram post it links to, or the post it quotes. Either is credited to
+  // the author who made the media, not to the Threads user who shared it.
+  const info = post.text_post_app_info;
+  for (const shared of [info?.linked_inline_media, info?.share_info?.quoted_post]) {
+    const sharedMedia =
+      shared && mapMetaPostMedia(shared, "threads", postUrl, shared.user?.username ?? authorHandle);
+    if (sharedMedia) return sharedMedia;
+  }
 
   // Text posts (media_type 19) and anything else we don't recognise.
   throw new MediaResolutionError("no-media");
