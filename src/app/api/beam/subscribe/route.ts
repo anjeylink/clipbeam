@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { defaultLocale, isDeclaredLocale, type Locale } from "intlayer";
 import type { PushSubscription } from "web-push";
-import { isBeamPaired } from "@/lib/server/beam/beam-session";
-import { saveSubscription } from "@/lib/server/beam/beam-store";
+import { newPhoneId } from "@/lib/server/beam/beam-auth";
+import { beamPhoneId, clientIp, setBeamCookie } from "@/lib/server/beam/beam-session";
+import { allowAttempt, savePhone } from "@/lib/server/beam/beam-store";
 
 function isPushSubscription(value: unknown): value is PushSubscription {
   const sub = value as PushSubscription | null;
@@ -14,11 +15,10 @@ function isPushSubscription(value: unknown): value is PushSubscription {
   );
 }
 
+// Registers this phone as a Beam receiver, or refreshes its subscription.
+// Open to anyone: a phone only ever receives from computers that typed one
+// of its codes.
 export async function POST(request: Request) {
-  if (!(await isBeamPaired())) {
-    return NextResponse.json({ code: "not-paired" }, { status: 401 });
-  }
-
   const body = (await request.json().catch(() => null)) as {
     subscription?: unknown;
     locale?: unknown;
@@ -32,7 +32,18 @@ export async function POST(request: Request) {
       ? (body.locale as Locale)
       : defaultLocale;
 
+  let phoneId = await beamPhoneId("phone");
+  if (!phoneId) {
+    if (!(await allowAttempt(`new-phone:${clientIp(request)}`, 20, 60 * 60))) {
+      return NextResponse.json({ code: "too-many-attempts" }, { status: 429 });
+    }
+    phoneId = newPhoneId();
+  }
+
   const { endpoint, keys } = body.subscription;
-  await saveSubscription({ endpoint, keys }, locale);
-  return NextResponse.json({ ok: true });
+  await savePhone(phoneId, { subscription: { endpoint, keys }, locale });
+
+  const response = NextResponse.json({ ok: true });
+  setBeamCookie(response, "phone", phoneId);
+  return response;
 }

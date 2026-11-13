@@ -13,8 +13,8 @@ const featureBulletsContent = {
         uk: "Не потрібен акаунт чи вхід",
       }),
       t({
-        en: "Nothing is stored after you leave the page",
-        uk: "Нічого не зберігається після того, як ви покинете сторінку",
+        en: "Nothing is stored after you leave the page, unless you connect your phone to Beam notifications",
+        uk: "Нічого не зберігається після того, як ви покинете сторінку, якщо тільки ви не під'єднаєте телефон до сповіщень Beam",
       }),
       t({
         en: "Posts with several photos or videos: pick the one you want",

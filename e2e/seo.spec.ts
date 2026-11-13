@@ -61,6 +61,8 @@ test("the sitemap lists every page in both locales with hreflang", async ({
     "/instagram-video-downloader",
     "/uk/twitter-video-downloader",
     "/threads-video-downloader",
+    "/beam",
+    "/uk/beam",
   ]) {
     expect(body).toMatch(new RegExp(`<loc>[^<]+${path}</loc>`));
   }
@@ -72,7 +74,7 @@ test("every sitemap entry carries the date its page last changed", async ({
 }) => {
   const body = await (await request.get("/sitemap.xml")).text();
   const urls = body.match(/<url>[\s\S]*?<\/url>/g)!;
-  expect(urls).toHaveLength(14);
+  expect(urls).toHaveLength(16);
   for (const url of urls) {
     expect(url).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}/);
   }

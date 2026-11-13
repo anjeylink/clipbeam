@@ -2,17 +2,21 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { Clipboard, Link as LinkIcon, Loader2, Send } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useIntlayer } from "next-intlayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { validatePostUrl } from "@/lib/parse-post-url";
+import { BEAM_NOTICE_PARAM, PHONE_GONE_NOTICE } from "@/lib/beam";
 
-type SendStatus = "idle" | "sending" | "sent" | "invalid-format" | "no-device" | "failed";
+type SendStatus = "idle" | "sending" | "sent" | "invalid-format" | "too-many-attempts" | "failed";
 
 export function BeamSendForm() {
   const content = useIntlayer("beam-send-form");
+  const router = useRouter();
+  const pathname = usePathname();
   const inputId = useId();
   const statusId = useId();
   const [url, setUrl] = useState("");
@@ -35,8 +39,17 @@ export function BeamSendForm() {
         setUrl("");
         return;
       }
+      if (res.status === 409) {
+        // The phone is gone and the server has disconnected this computer.
+        router.replace(`${pathname}?${BEAM_NOTICE_PARAM}=${PHONE_GONE_NOTICE}`);
+        return;
+      }
       setStatus(
-        res.status === 422 ? "invalid-format" : res.status === 409 ? "no-device" : "failed",
+        res.status === 422
+          ? "invalid-format"
+          : res.status === 429
+            ? "too-many-attempts"
+            : "failed",
       );
     } catch {
       setStatus("failed");
@@ -58,14 +71,15 @@ export function BeamSendForm() {
     }
   };
 
-  const isError = status === "invalid-format" || status === "no-device" || status === "failed";
+  const isError =
+    status === "invalid-format" || status === "too-many-attempts" || status === "failed";
   const message =
     status === "sent"
       ? content.sent
       : status === "invalid-format"
         ? content.errors.invalidFormat
-        : status === "no-device"
-          ? content.errors.noDevice
+        : status === "too-many-attempts"
+          ? content.errors.tooManyAttempts
           : status === "failed"
             ? content.errors.failed
             : null;

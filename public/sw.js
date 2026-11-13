@@ -1,5 +1,5 @@
 // ClipBeam service worker: only here to receive Beam pushes (see
-// docs/adr/0003-beam-single-secret-web-push.md). No caching, no offline.
+// docs/adr/0003-beam-phone-code-web-push.md). No caching, no offline.
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
