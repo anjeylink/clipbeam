@@ -9,8 +9,8 @@ const privacyPageContent = {
       uk: "Політика конфіденційності",
     }),
     updatedAt: t({
-      en: "Last updated: September 16, 2026",
-      uk: "Востаннє оновлено: 16 вересня 2026 р.",
+      en: "Last updated: November 13, 2026",
+      uk: "Востаннє оновлено: 13 листопада 2026 р.",
     }),
     intro: t({
       en: "This page explains what ClipBeam does — and doesn't — do with your data. We keep things minimal on purpose.",
@@ -24,8 +24,24 @@ const privacyPageContent = {
         }),
         paragraphs: [
           t({
-            en: "When you paste a post link, we process that URL to retrieve the media you asked for. We also store a small first-party cookie that remembers your preferred language (English or Ukrainian) — that's it.",
-            uk: "Коли ви вставляєте посилання на пост, ми обробляємо цю URL-адресу, щоб отримати медіа, яке ви запитали. Ми також зберігаємо невеликий власний файл cookie, що запам'ятовує вашу мову інтерфейсу (англійську чи українську) — і це все.",
+            en: "When you paste a post link, we process that URL to retrieve the media you asked for. We also store a small first-party cookie that remembers your preferred language (English or Ukrainian). If you use Beam, we keep what it needs to deliver your links, described below.",
+            uk: "Коли ви вставляєте посилання на пост, ми обробляємо цю URL-адресу, щоб отримати медіа, яке ви запитали. Ми також зберігаємо невеликий власний файл cookie, що запам'ятовує вашу мову інтерфейсу (англійську чи українську). Якщо ви користуєтеся Beam, ми зберігаємо те, що потрібно для доставки ваших посилань, — про це нижче.",
+          }),
+        ],
+      },
+      {
+        heading: t({
+          en: "Beam",
+          uk: "Beam",
+        }),
+        paragraphs: [
+          t({
+            en: "When you turn on Beam notifications on a phone, we store that phone's push address, issued by your browser's push service (such as Apple, Google or Mozilla), and your language. We use them only to deliver the links you send from your computers. Your phone and each connected computer remember the connection with a cookie.",
+            uk: "Коли ви вмикаєте сповіщення Beam на телефоні, ми зберігаємо push-адресу цього телефона, видану push-сервісом вашого браузера (наприклад, Apple, Google чи Mozilla), і вашу мову. Ми використовуємо їх лише для доставки посилань, які ви надсилаєте з комп'ютерів. Телефон і кожен під'єднаний комп'ютер запам'ятовують з'єднання за допомогою файлу cookie.",
+          }),
+          t({
+            en: "We don't keep the links you send. The push address is deleted when your phone stops accepting notifications and a link can't be delivered, or after a year without use. To slow down abuse, we also keep your IP address for up to an hour while you connect a computer or set up a phone.",
+            uk: "Ми не зберігаємо посилання, які ви надсилаєте. Push-адреса видаляється, коли телефон перестає приймати сповіщення й посилання не вдається доставити, або після року без використання. Щоб стримувати зловживання, ми також зберігаємо вашу IP-адресу до однієї години, поки ви під'єднуєте комп'ютер чи налаштовуєте телефон.",
           }),
         ],
       },

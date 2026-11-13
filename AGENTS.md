@@ -32,12 +32,12 @@ The allowlist in `src/lib/server/media-proxy.ts` is per-Platform: exact hosts fo
 
 ## Beam
 
-Beam (`/beam`, `/api/beam/*`, `public/sw.js`) is the owner-only relay from desktop to phone described in `docs/adr/0003-beam-single-secret-web-push.md`. It needs these env vars, and it is inert without them. The public site doesn't need them.
-- `BEAM_SECRET`
+Beam (`/beam`, `/api/beam/*`, `public/sw.js`) is the public relay from a computer to a phone described in `docs/adr/0003-beam-phone-code-web-push.md`: the phone shows a 6-digit code, the computer types it. Its page renders without the env vars below, but connecting and sending fail until they're set.
+- `BEAM_SECRET`: a server-only key that signs the `beam_phone` and `beam_computer` cookies. Nobody types it. Generate one with `openssl rand -base64 32`. Rotating it disconnects every device.
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:`). Generate the keys with `pnpm dlx web-push generate-vapid-keys`.
 - The Upstash Redis REST URL and token: `UPSTASH_REDIS_REST_*` or `KV_REST_API_*`.
 
-The e2e suite gets a fixed `BEAM_SECRET` through `webServer.env` in `playwright.config.ts`. If you reuse a dev server that's already running, start it with the same value, or the paired Beam tests fail.
+The e2e suite has no Redis. It gets a fixed `BEAM_SECRET` through `webServer.env` in `playwright.config.ts` and reaches the connected state by signing a `beam_computer` cookie with it. If you reuse a dev server that's already running, start it with the same value, or the connected Beam tests fail.
 
 ## TypeScript version
 

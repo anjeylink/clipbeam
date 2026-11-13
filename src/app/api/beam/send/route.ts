@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { validatePostUrl } from "@/lib/parse-post-url";
-import { isBeamPaired } from "@/lib/server/beam/beam-session";
+import { beamPhoneId, clearBeamCookie } from "@/lib/server/beam/beam-session";
+import { allowAttempt } from "@/lib/server/beam/beam-store";
 import { sendBeam } from "@/lib/server/beam/send-beam";
 
 export async function POST(request: Request) {
-  if (!(await isBeamPaired())) {
-    return NextResponse.json({ code: "not-paired" }, { status: 401 });
+  const phoneId = await beamPhoneId("computer");
+  if (!phoneId) {
+    return NextResponse.json({ code: "not-connected" }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
@@ -17,9 +19,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ code: "invalid-format" }, { status: 422 });
   }
 
-  const delivered = await sendBeam(url);
-  if (delivered === 0) {
-    return NextResponse.json({ code: "no-device" }, { status: 409 });
+  if (!(await allowAttempt(`send:${phoneId}`, 30, 60))) {
+    return NextResponse.json({ code: "too-many-attempts" }, { status: 429 });
   }
-  return NextResponse.json({ ok: true, delivered });
+
+  if ((await sendBeam(phoneId, { kind: "post", postUrl: url })) === "no-phone") {
+    // The phone is gone for good, so this computer goes back to asking for
+    // a code.
+    const response = NextResponse.json({ code: "no-device" }, { status: 409 });
+    clearBeamCookie(response, "computer");
+    return response;
+  }
+  return NextResponse.json({ ok: true });
 }

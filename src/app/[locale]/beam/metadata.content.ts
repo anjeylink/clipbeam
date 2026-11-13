@@ -5,12 +5,12 @@ const beamPageMetadata = {
   key: "beam-page-metadata",
   content: {
     title: t({
-      en: "Beam — ClipBeam",
-      uk: "Beam — ClipBeam",
+      en: "Beam: send a post from your computer to your phone — ClipBeam",
+      uk: "Beam: надішліть пост із комп'ютера на телефон — ClipBeam",
     }),
     description: t({
-      en: "Send a post from your computer to your phone.",
-      uk: "Надішліть пост із комп'ютера на телефон.",
+      en: "Paste an Instagram, X or Threads link on your computer and get it on your phone as a notification, ready to share. Free, no account.",
+      uk: "Вставте посилання з Instagram, X чи Threads на комп'ютері й отримайте його на телефоні як сповіщення, готовим до поширення. Безкоштовно, без акаунта.",
     }),
   },
 } satisfies Dictionary<Metadata>;
