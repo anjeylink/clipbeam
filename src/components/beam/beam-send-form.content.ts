@@ -28,9 +28,9 @@ const beamSendFormContent = {
         en: "That doesn't look like an Instagram, X (Twitter) or Threads post link. Paste a URL like https://www.instagram.com/p/ABC123, https://x.com/user/status/12345 or https://www.threads.com/@user/post/ABC123.",
         uk: "Це не схоже на посилання на пост Instagram, X (Twitter) або Threads. Вставте URL, наприклад https://www.instagram.com/p/ABC123, https://x.com/user/status/12345 або https://www.threads.com/@user/post/ABC123.",
       }),
-      noDevice: t({
-        en: "No phone is set up yet. Open Beam in the ClipBeam Home Screen app on your phone and turn on notifications.",
-        uk: "Телефон ще не налаштовано. Відкрийте Beam у застосунку ClipBeam на головному екрані телефона та увімкніть сповіщення.",
+      tooManyAttempts: t({
+        en: "That's a lot of links in a row. Wait a minute, then send again.",
+        uk: "Забагато посилань поспіль. Зачекайте хвилину й надішліть ще раз.",
       }),
       failed: t({
         en: "Couldn't send right now. Try again in a moment.",

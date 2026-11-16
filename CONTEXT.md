@@ -33,5 +33,5 @@ A same-origin stand-in for a CDN URL the browser can't (or shouldn't) fetch dire
 _Avoid_: download endpoint, download proxy
 
 **Beam**:
-The owner-only relay that takes a Post link pasted on one device (usually a computer) and delivers it as a push notification to a paired phone. Tapping the notification opens the clip tool with the Post preloaded, so a single tap on Share opens the OS share sheet. A Beam carries only the link; the phone resolves the media itself.
+The relay that takes a Post link pasted on a computer and delivers it as a push notification to the phone connected to it. A phone connects to a computer by showing a 6-digit code that is typed on the computer; one phone can be connected to several computers, each computer to one phone. Tapping the notification opens the clip tool with the Post preloaded, so a single tap on Share opens the OS share sheet. A Beam carries only the link; the phone resolves the media itself.
 _Avoid_: inbox, send-to-phone (as a noun), relay

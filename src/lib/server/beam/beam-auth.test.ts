@@ -1,38 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { beamSessionToken, isValidBeamKey, isValidBeamSession } from "./beam-auth";
+import { newPhoneId, readBeamCookie, signBeamCookie } from "./beam-auth";
 
-describe("isValidBeamKey", () => {
-  it("accepts the exact secret", () => {
-    expect(isValidBeamKey("s3cret", "s3cret")).toBe(true);
+const SECRET = "s3cret";
+
+describe("beam cookies", () => {
+  it("round-trip the phone id for the role they were signed for", () => {
+    const phoneId = newPhoneId();
+    expect(readBeamCookie("phone", signBeamCookie("phone", phoneId, SECRET), SECRET)).toBe(
+      phoneId,
+    );
+    expect(
+      readBeamCookie("computer", signBeamCookie("computer", phoneId, SECRET), SECRET),
+    ).toBe(phoneId);
   });
 
-  it("rejects a different key", () => {
-    expect(isValidBeamKey("s3cre", "s3cret")).toBe(false);
-    expect(isValidBeamKey("", "s3cret")).toBe(false);
+  it("never carry the secret", () => {
+    expect(signBeamCookie("phone", newPhoneId(), SECRET)).not.toContain(SECRET);
   });
 
-  it("rejects everything when no secret is configured", () => {
-    expect(isValidBeamKey("", undefined)).toBe(false);
-    expect(isValidBeamKey("anything", "")).toBe(false);
-  });
-});
-
-describe("isValidBeamSession", () => {
-  it("accepts the token issued for the secret", () => {
-    expect(isValidBeamSession(beamSessionToken("s3cret"), "s3cret")).toBe(true);
+  it("can't be replayed in the other role", () => {
+    const computer = signBeamCookie("computer", "phone-1", SECRET);
+    expect(readBeamCookie("phone", computer, SECRET)).toBeNull();
   });
 
-  it("never carries the raw secret", () => {
-    expect(beamSessionToken("s3cret")).not.toContain("s3cret");
-    expect(isValidBeamSession("s3cret", "s3cret")).toBe(false);
+  it("reject a different phone id under a valid signature", () => {
+    const [, sig] = signBeamCookie("computer", "phone-1", SECRET).split(".");
+    expect(readBeamCookie("computer", `phone-2.${sig}`, SECRET)).toBeNull();
   });
 
-  it("rejects a token issued for another secret", () => {
-    expect(isValidBeamSession(beamSessionToken("old"), "new")).toBe(false);
+  it("reject cookies signed with another secret, or with none configured", () => {
+    const cookie = signBeamCookie("computer", "phone-1", SECRET);
+    expect(readBeamCookie("computer", cookie, "other")).toBeNull();
+    expect(readBeamCookie("computer", cookie, undefined)).toBeNull();
+    expect(readBeamCookie("computer", cookie, "")).toBeNull();
   });
 
-  it("rejects a missing cookie or secret", () => {
-    expect(isValidBeamSession(undefined, "s3cret")).toBe(false);
-    expect(isValidBeamSession(beamSessionToken("s3cret"), undefined)).toBe(false);
+  it("reject malformed values", () => {
+    for (const value of [undefined, "", "no-dot", ".sig-only", "phone-1."]) {
+      expect(readBeamCookie("computer", value, SECRET), String(value)).toBeNull();
+    }
+  });
+
+  it("issue a fresh, unguessable id each time", () => {
+    const ids = new Set(Array.from({ length: 100 }, newPhoneId));
+    expect(ids.size).toBe(100);
+    expect(newPhoneId()).toMatch(/^[\w-]{22}$/);
   });
 });

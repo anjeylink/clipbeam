@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { HeroSection } from "@/components/hero-section";
 import { HowItWorks } from "@/components/how-it-works";
 import { FeatureBullets } from "@/components/feature-bullets";
+import { BeamPromo } from "@/components/beam/beam-promo";
 import { Faq } from "@/components/faq";
 import { PlatformLinks } from "@/components/platform-links";
 import { SiteFooter } from "@/components/site-footer";
@@ -51,6 +52,7 @@ export default async function Home({ params }: PageProps<"/[locale]">) {
         <HeroSection heading={hero.heading} subtext={hero.subtext} />
         <HowItWorks />
         <FeatureBullets />
+        <BeamPromo />
         <PlatformLinks />
         <Faq />
       </main>

@@ -1,15 +1,23 @@
 import webpush, { WebPushError } from "web-push";
-import { getIntlayer, getLocalizedUrl } from "intlayer";
+import { getIntlayer, getLocalizedUrl, type Locale } from "intlayer";
 import { URL_QUERY_PARAM } from "@/lib/clip-tool-store";
-import { listSubscriptions, removeSubscription } from "./beam-store";
+import { getPhone, keepPhone, removePhone } from "./beam-store";
 
 export interface BeamPayload {
   title: string;
   body: string;
-  // Same-origin path the notification opens: the clip tool with the post
-  // preloaded, so one more tap on Share reaches the OS share sheet.
+  // Same-origin path the notification opens.
   url: string;
 }
+
+export type BeamMessage =
+  // A post to share: opens the clip tool with it preloaded, so one more tap
+  // on Share reaches the OS share sheet.
+  | { kind: "post"; postUrl: string }
+  // Sent the moment a computer connects, proving the whole chain works.
+  | { kind: "connected" };
+
+export type BeamDelivery = "delivered" | "no-phone";
 
 let vapidConfigured = false;
 
@@ -25,39 +33,52 @@ function configureVapid() {
   vapidConfigured = true;
 }
 
-/**
- * Pushes a post URL to every subscribed phone. Returns how many
- * subscriptions it was delivered to; 0 means no phone is listening.
- * Subscriptions the push service reports as gone are dropped.
- */
-export async function sendBeam(postUrl: string): Promise<number> {
-  configureVapid();
-  const subscriptions = await listSubscriptions();
-
-  const results = await Promise.all(
-    subscriptions.map(async ({ subscription, locale }) => {
-      const query = new URLSearchParams({ [URL_QUERY_PARAM]: postUrl });
-      const payload: BeamPayload = {
-        title: getIntlayer("beam-notification", locale).title,
-        body: postUrl,
+function toPayload(message: BeamMessage, locale: Locale): BeamPayload {
+  const text = getIntlayer("beam-notification", locale);
+  switch (message.kind) {
+    case "post": {
+      const query = new URLSearchParams({ [URL_QUERY_PARAM]: message.postUrl });
+      return {
+        title: text.post.title,
+        body: message.postUrl,
         url: `${getLocalizedUrl("/", locale)}?${query}`,
       };
+    }
+    case "connected":
+      return {
+        title: text.connected.title,
+        body: text.connected.body,
+        url: getLocalizedUrl("/beam", locale),
+      };
+  }
+}
 
-      try {
-        await webpush.sendNotification(subscription, JSON.stringify(payload));
-        return true;
-      } catch (error) {
-        if (
-          error instanceof WebPushError &&
-          (error.statusCode === 404 || error.statusCode === 410)
-        ) {
-          await removeSubscription(subscription.endpoint);
-          return false;
-        }
-        throw error;
-      }
-    }),
-  );
+/**
+ * Pushes a message to one phone. "no-phone" means it can't be reached: it
+ * never subscribed, expired, or the push service reports its subscription
+ * gone (404/410), in which case the record is dropped.
+ */
+export async function sendBeam(phoneId: string, message: BeamMessage): Promise<BeamDelivery> {
+  configureVapid();
+  const phone = await getPhone(phoneId);
+  if (!phone) return "no-phone";
 
-  return results.filter(Boolean).length;
+  try {
+    await webpush.sendNotification(
+      phone.subscription,
+      JSON.stringify(toPayload(message, phone.locale)),
+    );
+  } catch (error) {
+    if (
+      error instanceof WebPushError &&
+      (error.statusCode === 404 || error.statusCode === 410)
+    ) {
+      await removePhone(phoneId);
+      return "no-phone";
+    }
+    throw error;
+  }
+
+  await keepPhone(phoneId);
+  return "delivered";
 }

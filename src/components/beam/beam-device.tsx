@@ -6,6 +6,8 @@ import { useIntlayer, useLocale } from "next-intlayer";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { urlBase64ToUint8Array } from "@/lib/url-base64-to-uint8array";
+import { BeamInstallGuide } from "./beam-install-guide";
+import { BeamPhoneCode } from "./beam-phone-code";
 
 type DeviceStatus =
   | "checking"
@@ -37,9 +39,10 @@ async function saveSubscription(subscription: PushSubscription, locale: string) 
   if (!res.ok) throw new Error(`subscribe failed: ${res.status}`);
 }
 
-// Turns this device into a Beam receiver. On iOS that only works inside the
-// Home Screen app (16.4+), so Safari gets install instructions instead.
-export function BeamDevice() {
+// Turns this phone into a Beam receiver, then shows the code a computer
+// types to connect. On iOS that only works inside the Home Screen app
+// (16.4+), so Safari gets the install guide instead.
+export function BeamDevice({ computerUrl }: { computerUrl: string }) {
   const content = useIntlayer("beam-device");
   const { locale } = useLocale();
   const [status, setStatus] = useState<DeviceStatus>("checking");
@@ -52,9 +55,14 @@ export function BeamDevice() {
     let cancelled = false;
 
     (async () => {
-      const supported = "serviceWorker" in navigator && "PushManager" in window;
-      if (!supported) {
-        setStatus(isIOS() && !isStandalone() ? "install" : "unsupported");
+      // Checked before feature support: Safari tabs on iOS may expose the
+      // APIs but never get a push.
+      if (isIOS() && !isStandalone()) {
+        setStatus("install");
+        return;
+      }
+      if (!("serviceWorker" in navigator && "PushManager" in window)) {
+        setStatus("unsupported");
         return;
       }
       if (Notification.permission === "denied") {
@@ -73,7 +81,7 @@ export function BeamDevice() {
 
         const existing = await registration.pushManager.getSubscription();
         if (existing) {
-          // Re-sync, in case the server-side copy was lost.
+          // Re-sync, in case the server-side copy was lost or expired.
           await saveSubscription(existing, locale);
           if (!cancelled) setStatus("subscribed");
         } else if (!cancelled) {
@@ -112,14 +120,15 @@ export function BeamDevice() {
       });
   };
 
+  if (status === "install") return <BeamInstallGuide />;
+  if (status === "subscribed") return <BeamPhoneCode computerUrl={computerUrl} />;
+
   const message = {
     checking: null,
-    install: content.install,
     unsupported: content.unsupported,
     denied: content.denied,
     ready: content.ready,
     subscribing: content.ready,
-    subscribed: content.subscribed,
     failed: content.failed,
   }[status];
 

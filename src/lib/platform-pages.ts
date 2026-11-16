@@ -5,9 +5,9 @@ import type { Platform } from "@/lib/media-types";
 // change once indexed. lastModified is the day the page's copy last changed
 // — bump it by hand; a build timestamp would teach crawlers to ignore it.
 export const PLATFORM_PAGES: Record<Platform, { slug: string; lastModified: string }> = {
-  instagram: { slug: "instagram-video-downloader", lastModified: "2026-10-08" },
-  x: { slug: "twitter-video-downloader", lastModified: "2026-10-08" },
-  threads: { slug: "threads-video-downloader", lastModified: "2026-10-08" },
+  instagram: { slug: "instagram-video-downloader", lastModified: "2026-11-13" },
+  x: { slug: "twitter-video-downloader", lastModified: "2026-11-13" },
+  threads: { slug: "threads-video-downloader", lastModified: "2026-11-13" },
 };
 
 // In the order the copy names them everywhere: Instagram, X, Threads.

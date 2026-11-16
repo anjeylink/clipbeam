@@ -24,6 +24,10 @@ const siteFooterContent = {
         en: "DMCA",
         uk: "DMCA",
       }),
+      beam: t({
+        en: "Beam",
+        uk: "Beam",
+      }),
     },
   },
 } satisfies Dictionary;

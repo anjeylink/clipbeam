@@ -7,13 +7,14 @@ import { absoluteUrl, localeAlternates } from "@/lib/seo";
 // changed. Bump the date by hand when a page's copy changes — the legal
 // pages' matches their visible "Last updated" line.
 const PAGES = [
-  { path: "/", lastModified: "2026-10-08" },
+  { path: "/", lastModified: "2026-11-13" },
+  { path: "/beam", lastModified: "2026-11-13" },
   ...PLATFORMS.map((platform) => ({
     path: platformPagePath(platform),
     lastModified: PLATFORM_PAGES[platform].lastModified,
   })),
   { path: "/terms", lastModified: "2026-09-16" },
-  { path: "/privacy", lastModified: "2026-09-16" },
+  { path: "/privacy", lastModified: "2026-11-13" },
   { path: "/dmca", lastModified: "2026-09-16" },
 ];
 
