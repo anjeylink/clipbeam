@@ -32,3 +32,13 @@ export const PHONE_GONE_NOTICE = "phone-gone";
 // of Beam to show.
 export const BEAM_DEVICE_PARAM = "device";
 export type BeamDeviceView = "phone" | "computer";
+
+// Readable twin of the httpOnly beam_computer cookie, set and cleared with
+// it. It holds no secret: static pages read it to decide whether to show
+// Beam's connected UI, and /api/beam/send still checks the signed cookie.
+export const BEAM_CONNECTED_COOKIE = "beam_connected";
+
+/** Whether a `document.cookie` string carries the connected hint. */
+export function hasBeamConnectedCookie(cookieString: string): boolean {
+  return cookieString.split(";").some((pair) => pair.trim() === `${BEAM_CONNECTED_COOKIE}=1`);
+}
