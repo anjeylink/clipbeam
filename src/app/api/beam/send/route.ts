@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { validatePostUrl } from "@/lib/parse-post-url";
-import { beamPhoneId, clearBeamCookie } from "@/lib/server/beam/beam-session";
+import { beamPhoneId, clearBeamCookie, setBeamCookie } from "@/lib/server/beam/beam-session";
 import { allowAttempt } from "@/lib/server/beam/beam-store";
 import { sendBeam } from "@/lib/server/beam/send-beam";
 
 export async function POST(request: Request) {
   const phoneId = await beamPhoneId("computer");
   if (!phoneId) {
-    return NextResponse.json({ code: "not-connected" }, { status: 401 });
+    // Also drops a connected hint the signed cookie no longer backs (a
+    // rotated BEAM_SECRET, a tampered cookie), so pages stop offering Beam.
+    const response = NextResponse.json({ code: "not-connected" }, { status: 401 });
+    clearBeamCookie(response, "computer");
+    return response;
   }
 
   const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
@@ -30,5 +34,9 @@ export async function POST(request: Request) {
     clearBeamCookie(response, "computer");
     return response;
   }
-  return NextResponse.json({ ok: true });
+  // Re-set rather than left alone, so a computer connected before the hint
+  // existed picks it up.
+  const response = NextResponse.json({ ok: true });
+  setBeamCookie(response, "computer", phoneId);
+  return response;
 }

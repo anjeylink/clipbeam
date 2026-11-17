@@ -6,6 +6,12 @@ import { useIntlayer } from "next-intlayer";
 import { cn } from "cn";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  SendToPhoneButton,
+  SendToPhoneMessage,
+  useSendToPhone,
+} from "@/components/beam/send-to-phone-button";
+import { useBeamConnected } from "@/hooks/use-beam-connected";
 import { useNativeShare } from "@/hooks/use-native-share";
 import type { ParsedMedia } from "@/lib/parse-post-url";
 import type { BlobStatus } from "@/hooks/use-clip-tool";
@@ -66,6 +72,9 @@ export function ShareActions({
     if (canShareFiles) onEnsureBlob();
   }, [canShareFiles, blobStatus, selectedItemIndex, selectedQualityIndex, media, onEnsureBlob]);
 
+  const beamConnected = useBeamConnected();
+  const phone = useSendToPhone(media.postUrl);
+
   const isPreparing = blobStatus === "idle" || blobStatus === "loading";
   const isError = canShareFiles && blobStatus === "error";
 
@@ -111,6 +120,9 @@ export function ShareActions({
           <Download data-icon="inline-start" className="size-4" aria-hidden="true" />
           {content.download}
         </a>
+        {beamConnected && phone.status !== "disconnected" ? (
+          <SendToPhoneButton status={phone.status} onSend={phone.send} />
+        ) : null}
       </div>
       {isError ? (
         <Alert variant="destructive">
@@ -128,6 +140,7 @@ export function ShareActions({
           <AlertDescription>{content.errors[shareError]}</AlertDescription>
         </Alert>
       ) : null}
+      <SendToPhoneMessage status={phone.status} />
     </div>
   );
 }
