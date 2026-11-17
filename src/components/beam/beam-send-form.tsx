@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { validatePostUrl } from "@/lib/parse-post-url";
 import { BEAM_NOTICE_PARAM, PHONE_GONE_NOTICE } from "@/lib/beam";
+import { sendToPhone, type SendResult } from "@/lib/send-to-phone";
 
-type SendStatus = "idle" | "sending" | "sent" | "invalid-format" | "too-many-attempts" | "failed";
+// Disconnected never lingers here: the form gives way to the code form.
+type SendStatus = "idle" | "sending" | Exclude<SendResult, "disconnected">;
 
 export function BeamSendForm() {
   const content = useIntlayer("beam-send-form");
@@ -28,32 +30,13 @@ export function BeamSendForm() {
       return;
     }
     setStatus("sending");
-    try {
-      const res = await fetch("/api/beam/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: value }),
-      });
-      if (res.ok) {
-        setStatus("sent");
-        setUrl("");
-        return;
-      }
-      if (res.status === 409) {
-        // The phone is gone and the server has disconnected this computer.
-        router.replace(`${pathname}?${BEAM_NOTICE_PARAM}=${PHONE_GONE_NOTICE}`);
-        return;
-      }
-      setStatus(
-        res.status === 422
-          ? "invalid-format"
-          : res.status === 429
-            ? "too-many-attempts"
-            : "failed",
-      );
-    } catch {
-      setStatus("failed");
+    const result = await sendToPhone(value);
+    if (result === "disconnected") {
+      router.replace(`${pathname}?${BEAM_NOTICE_PARAM}=${PHONE_GONE_NOTICE}`);
+      return;
     }
+    setStatus(result);
+    if (result === "sent") setUrl("");
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
