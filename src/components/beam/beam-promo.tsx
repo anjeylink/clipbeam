@@ -1,15 +1,20 @@
+"use client";
+
 import { getLocalizedUrl } from "intlayer";
 import { ArrowRight, Laptop, Smartphone } from "lucide-react";
 import { useIntlayer, useLocale } from "next-intlayer";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useBeamConnected } from "@/hooks/use-beam-connected";
 
 // The home page's pointer to Beam: most people find a post on one device
-// and want to share it from the other.
+// and want to share it from the other. A connected computer already has
+// Beam, so it's told where to use it instead.
 export function BeamPromo() {
-  const content = useIntlayer("beam-promo");
+  const { pitch, connected } = useIntlayer("beam-promo");
   const { locale } = useLocale();
+  const content = useBeamConnected() ? connected : pitch;
 
   return (
     <section aria-labelledby="beam-promo-heading" className="w-full px-4 py-12">

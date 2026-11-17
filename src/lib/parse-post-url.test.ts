@@ -7,6 +7,8 @@ import {
   validateXUrl,
   ParsePostUrlError,
 } from "./parse-post-url";
+import { instagramPostUrl } from "./server/map-instagram-embed";
+import { threadsPostUrl } from "./server/map-threads-embed";
 
 describe("validateXUrl", () => {
   it("accepts a well-formed x.com status link", () => {
@@ -187,6 +189,21 @@ describe("validatePostUrl", () => {
     expect(validatePostUrl("https://www.instagram.com/share/p/BAabc123")).toEqual(shareLink);
     expect(validatePostUrl("instagram.com/share/BAabc123")).toEqual(shareLink);
     expect(validatePostUrl("https://www.instagram.com/share/")).toEqual({ valid: false });
+  });
+
+  // Send to phone posts the resolved post's own postUrl, which
+  // /api/beam/send re-validates.
+  it("accepts the postUrl a resolved Instagram or Threads post carries", () => {
+    expect(validatePostUrl(instagramPostUrl("DdhFkS7KGkZ"))).toMatchObject({
+      valid: true,
+      platform: "instagram",
+      shortcode: "DdhFkS7KGkZ",
+    });
+    expect(validatePostUrl(threadsPostUrl("some.one_2", "Dcy_A8pGo-m"))).toMatchObject({
+      valid: true,
+      platform: "threads",
+      shortcode: "Dcy_A8pGo-m",
+    });
   });
 
   it("rejects anything else", () => {
