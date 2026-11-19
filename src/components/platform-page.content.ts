@@ -69,13 +69,45 @@ const platformPageContent = {
           },
           {
             heading: t({
-              en: "What doesn't work yet",
-              uk: "Що поки не працює",
+              en: "Carousels: one photo or video at a time",
+              uk: "Каруселі: фото чи відео по одному",
             }),
             paragraphs: [
               t({
-                en: "Posts from private accounts, Stories and Highlights can't be read. Carousel posts with several photos or videos aren't supported yet either: ClipBeam takes one image or video per link.",
-                uk: "Пости з приватних акаунтів, Stories та Highlights прочитати неможливо. Каруселі з кількома фото чи відео теж поки не підтримуються: ClipBeam бере одне зображення чи відео з посилання.",
+                en: "For a post with several photos or videos, ClipBeam shows how many there are and lets you pick each one, in the same order as on Instagram. Preview it, download or share it, then pick the next. Each photo and video is saved as its own file.",
+                uk: "Якщо в пості кілька фото чи відео, ClipBeam показує, скільки їх, і дає обрати кожне в тому самому порядку, що й в Instagram. Перегляньте його, завантажте чи надішліть, а тоді оберіть наступне. Кожне фото й відео зберігається окремим файлом.",
+              }),
+            ],
+          },
+          {
+            heading: t({
+              en: "Save a Reel to your phone's gallery",
+              uk: "Як зберегти Reel у галерею телефона",
+            }),
+            paragraphs: [
+              t({
+                en: "Open ClipBeam in your phone's browser and paste the Reel link. On iPhone, tap Share and choose Save Video to put it in Photos. Download works too, but on iPhone it puts the file in the Files app rather than Photos.",
+                uk: "Відкрийте ClipBeam у браузері телефона й вставте посилання на Reel. На iPhone натисніть «Поділитися» й оберіть «Зберегти відео», щоб додати його у Фото. «Завантажити» теж працює, але на iPhone файл потрапляє в застосунок «Файли», а не у Фото.",
+              }),
+              t({
+                en: "On Android, Download saves the video to your Downloads folder, where Google Photos and other gallery apps can find it.",
+                uk: "На Android «Завантажити» зберігає відео в папку «Завантаження», де його знайдуть Google Фото та інші галереї.",
+              }),
+            ],
+          },
+          {
+            heading: t({
+              en: "When a link doesn't work",
+              uk: "Якщо посилання не працює",
+            }),
+            paragraphs: [
+              t({
+                en: "ClipBeam only sees what anyone can see without logging in, so posts from private accounts, Stories and Highlights can't be read. Neither can a deleted post: check that the link still opens in a private browser window.",
+                uk: "ClipBeam бачить лише те, що будь-хто може побачити без входу в акаунт, тож пости з приватних акаунтів, Stories та Highlights прочитати неможливо. Видалений пост теж: перевірте, чи посилання ще відкривається у приватному вікні браузера.",
+              }),
+              t({
+                en: "If a public post fails with a message about rate limiting, Instagram is turning requests away for a moment. Wait a minute and try again.",
+                uk: "Якщо публічний пост не відкривається й ви бачите повідомлення про обмеження запитів, Instagram тимчасово відхиляє звернення. Зачекайте хвилину й спробуйте ще раз.",
               }),
             ],
           },
@@ -129,13 +161,37 @@ const platformPageContent = {
           },
           {
             heading: t({
-              en: "What doesn't work yet",
-              uk: "Що поки не працює",
+              en: "Posts with up to four photos or videos",
+              uk: "Пости, де до чотирьох фото чи відео",
             }),
             paragraphs: [
               t({
-                en: "Posts from protected accounts can't be read, and a post with several photos or videos isn't supported yet: ClipBeam takes one image or video per link.",
-                uk: "Пости із закритих акаунтів прочитати неможливо, а пост із кількома фото чи відео поки не підтримується: ClipBeam бере одне зображення чи відео з посилання.",
+                en: "A post on X can carry up to four photos or videos. ClipBeam lists them in the post's order. Pick one, choose its quality if it's a video, then download or share it.",
+                uk: "Пост у X може містити до чотирьох фото чи відео. ClipBeam показує їх у тому самому порядку, що й у пості. Оберіть потрібне, для відео виберіть якість, а тоді завантажте чи надішліть його.",
+              }),
+            ],
+          },
+          {
+            heading: t({
+              en: "Quote posts",
+              uk: "Цитування",
+            }),
+            paragraphs: [
+              t({
+                en: "Paste a quote post that has no video or image of its own, and ClipBeam gives you the media from the post it quotes, credited to that post's author. If the quote post has its own media, you get that instead.",
+                uk: "Якщо вставити цитування без власного відео чи зображення, ClipBeam дасть вам медіа з процитованого поста й укаже його автора. Якщо в цитуванні є власні медіа, ви отримаєте саме їх.",
+              }),
+            ],
+          },
+          {
+            heading: t({
+              en: "When a link doesn't work",
+              uk: "Якщо посилання не працює",
+            }),
+            paragraphs: [
+              t({
+                en: "Posts from protected accounts can't be read, because ClipBeam only sees what's public. A deleted post won't work either, and neither will a link to a profile. A post link has /status/ followed by the post number, unless it's a t.co short link.",
+                uk: "Пости із закритих акаунтів прочитати неможливо, бо ClipBeam бачить лише публічне. Не спрацює й видалений пост або посилання на профіль. У посиланні на пост є /status/ і номер поста, якщо це не коротке посилання t.co.",
               }),
             ],
           },
@@ -173,6 +229,18 @@ const platformPageContent = {
           },
           {
             heading: t({
+              en: "What you get",
+              uk: "Що ви отримаєте",
+            }),
+            paragraphs: [
+              t({
+                en: "ClipBeam shows the video or image first, then lets you download it or share the file itself. Threads serves each video in a single quality, so there's nothing to pick.",
+                uk: "Спершу ClipBeam показує відео чи зображення, а тоді дає завантажити його або поділитися самим файлом. Threads віддає кожне відео в одній якості, тож обирати нічого не треба.",
+              }),
+            ],
+          },
+          {
+            heading: t({
               en: "Threads posts that only link to an Instagram Reel",
               uk: "Пости Threads, які лише посилаються на Reel з Instagram",
             }),
@@ -185,13 +253,25 @@ const platformPageContent = {
           },
           {
             heading: t({
-              en: "What doesn't work yet",
-              uk: "Що поки не працює",
+              en: "Carousels and quote posts",
+              uk: "Каруселі та цитування",
             }),
             paragraphs: [
               t({
-                en: "Threads videos come in a single quality. Posts from private profiles can't be read, and a post with several photos or videos isn't supported yet: ClipBeam takes one image or video per link.",
-                uk: "Відео з Threads доступні в одній якості. Пости з приватних профілів прочитати неможливо, а пост із кількома фото чи відео поки не підтримується: ClipBeam бере одне зображення чи відео з посилання.",
+                en: "A Threads post with several photos or videos shows all of them in order, and you pick one at a time. A quote post with no media of its own gives you the media from the post it quotes, credited to that post's author.",
+                uk: "Пост Threads із кількома фото чи відео показує їх усі по порядку, а ви обираєте по одному. Цитування без власних медіа дає вам медіа з процитованого поста із зазначенням його автора.",
+              }),
+            ],
+          },
+          {
+            heading: t({
+              en: "When a link doesn't work",
+              uk: "Якщо посилання не працює",
+            }),
+            paragraphs: [
+              t({
+                en: "Posts from private profiles can't be read, and neither can deleted ones. A link to a profile won't work either: copy the link of the post itself, from its Share button.",
+                uk: "Пости з приватних профілів прочитати неможливо, як і видалені. Посилання на профіль теж не спрацює: скопіюйте посилання на сам пост через його кнопку «Поділитися».",
               }),
             ],
           },

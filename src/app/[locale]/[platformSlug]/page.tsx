@@ -5,6 +5,8 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { HeroSection } from "@/components/hero-section";
 import { HowItWorks } from "@/components/how-it-works";
+import { ContentSections } from "@/components/content-sections";
+import { BeamPromo } from "@/components/beam/beam-promo";
 import { PlatformLinks } from "@/components/platform-links";
 import { SiteFooter } from "@/components/site-footer";
 import { PLATFORM_PAGES, PLATFORMS, platformForSlug } from "@/lib/platform-pages";
@@ -85,22 +87,8 @@ export default async function PlatformPage({
         </nav>
         <HeroSection heading={page.heading} subtext={page.subtext} />
         <HowItWorks />
-        <article className="w-full px-4 py-12">
-          <div className="mx-auto flex max-w-3xl flex-col gap-8">
-            {page.sections.map((section, index) => (
-              <section key={index} className="flex flex-col gap-3">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {section.heading}
-                </h2>
-                {section.paragraphs.map((paragraph, pIndex) => (
-                  <p key={pIndex} className="text-sm leading-relaxed sm:text-base">
-                    {paragraph}
-                  </p>
-                ))}
-              </section>
-            ))}
-          </div>
-        </article>
+        <ContentSections sections={page.sections} />
+        <BeamPromo />
         <PlatformLinks current={platform} />
       </main>
       <SiteFooter />
