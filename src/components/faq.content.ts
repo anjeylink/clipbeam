@@ -60,6 +60,26 @@ const faqContent = {
       },
       {
         question: t({
+          en: "How do I send a post from my computer to my phone?",
+          uk: "Як надіслати пост із комп'ютера на телефон?",
+        }),
+        answer: t({
+          en: "Use Beam. Connect your phone once with a 6-digit code it shows you, then paste a link on your computer: your phone gets a notification, and tapping it opens the post ready to share.",
+          uk: "Скористайтеся Beam. Один раз під'єднайте телефон за 6-значним кодом, який він покаже, а тоді вставляйте посилання на комп'ютері: телефон отримає сповіщення, а натискання на нього відкриє пост, готовий до поширення.",
+        }),
+      },
+      {
+        question: t({
+          en: "Is ClipBeam free?",
+          uk: "ClipBeam безкоштовний?",
+        }),
+        answer: t({
+          en: "Yes. Downloading, sharing and Beam are all free, with no sign-up and no limit on file quality beyond what the post itself offers.",
+          uk: "Так. Завантаження, поширення та Beam безкоштовні, без реєстрації й без обмежень якості, окрім тих, що має сам пост.",
+        }),
+      },
+      {
+        question: t({
           en: "Does it work with private posts?",
           uk: "Чи працює це з приватними постами?",
         }),

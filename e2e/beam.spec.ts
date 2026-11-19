@@ -328,6 +328,40 @@ test("the home page promotes Beam and leads to it", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Beam", level: 1 })).toBeVisible();
 });
 
+test("the landing pages promote Beam", async ({ page }) => {
+  for (const [path, href] of [
+    ["/instagram-video-downloader", "/beam"],
+    ["/uk/threads-video-downloader", "/uk/beam"],
+  ] as const) {
+    await page.goto(path);
+    await expect(
+      page.getByRole("link", { name: /set up beam|налаштувати beam/i }),
+      path,
+    ).toHaveAttribute("href", href);
+  }
+});
+
+test("the Beam page explains how it works and links to every downloader", async ({
+  page,
+}) => {
+  for (const [path, howItWorks, linkPrefix] of [
+    ["/beam", "How Beam works", ""],
+    ["/uk/beam", "Як працює Beam", "/uk"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: howItWorks, level: 2 }), path).toBeVisible();
+
+    const nav = page.getByRole("navigation", {
+      name: /download by platform|завантаження за платформою/i,
+    });
+    await expect(nav.getByRole("link"), path).toHaveCount(3);
+    await expect(nav.getByRole("link").first(), path).toHaveAttribute(
+      "href",
+      `${linkPrefix}/instagram-video-downloader`,
+    );
+  }
+});
+
 test("every page links to Beam in the footer", async ({ page }) => {
   for (const [path, href] of [
     ["/", "/beam"],

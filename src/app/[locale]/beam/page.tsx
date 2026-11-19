@@ -6,6 +6,8 @@ import { useIntlayer } from "next-intlayer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
+import { ContentSections } from "@/components/content-sections";
+import { PlatformLinks } from "@/components/platform-links";
 import { BeamConnectForm } from "@/components/beam/beam-connect-form";
 import { BeamDevice } from "@/components/beam/beam-device";
 import { BeamDisconnectButton } from "@/components/beam/beam-disconnect-button";
@@ -132,6 +134,8 @@ export default async function BeamPage({
       <SiteHeader />
       <main className="flex flex-1 flex-col">
         <BeamContent view={view} beamUrl={`${host}${pathname}`} />
+        <ContentSections sections={getIntlayer("beam-page", locale as Locale).sections} />
+        <PlatformLinks />
       </main>
       <SiteFooter />
     </div>
